@@ -943,7 +943,7 @@ proc trivia_random_element { l } {
 # Start the game
 proc trivia_start { } {
 #<<<
-	global trivia_status trivia_channel trivia_unanswered trivia_run_last trivia_run_qty trivia_c trivia_must_rehash
+	global trivia_status trivia_channel trivia_unanswered trivia_run_last trivia_run_qty trivia_c trivia_must_rehash trivia_db_handle
 
 	if {$trivia_status == 1} {
 		putserv "PRIVMSG $trivia_channel :Trivia is already running."
