@@ -60,8 +60,12 @@ set trivia_c(bold) "\002"
 bind pubm - * trivia_input
 bind msg - trivia trivia_msg
 
-# connect mysql
-set trivia_db_handle [mysqlconnect -host localhost -user root -password 7MKh3ako -db trivialive]
+# connect mysql <<<
+proc trivia_connect { } {
+	global trivia_db_handle
+	set trivia_db_handle [mysqlconnect -host localhost -user root -password 7MKh3ako -db trivialive]
+}
+#>>>
 
 #>>>
 
@@ -568,6 +572,12 @@ proc trivia_enable {} {
 
 	set trivia_status 0
 	putserv "PRIVMSG $trivia_channel :Trivia enabled."
+
+	set alive [::mysql::ping $trivia_db_handle]
+	if {$alive == false} {
+		putlog "ERROR: mysql has gone away :("
+		putquick "PRIVMSG $trivia_channel :Warning: Unable to reach database!"
+	}
 	return 0
 }
 #>>>
@@ -659,7 +669,16 @@ proc trivia_make_hint { hint answer } {
 # Fetch a question
 proc trivia_get_question { } {
 #<<<
-	global trivia_db_handle trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint
+	global trivia_db_handle trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_channel
+
+	# make sure we're connected
+	set alive [::mysql::ping $trivia_db_handle]
+	if {$alive == false} {
+		putlog "ERROR: mysql has gone away :("
+		putquick "PRIVMSG $trivia_channel :Couldn't reach database to load next question :("
+		return 0
+	}
+
 	set sql "SELECT q.question, q.question_id, q.answer, c.cat_name FROM questions q LEFT JOIN categories c USING (cat_id) WHERE c.cat_enabled=1 ORDER BY count ASC, rand() LIMIT 1"
 	set result [mysqlquery $trivia_db_handle $sql]
 
@@ -934,6 +953,12 @@ proc trivia_start { } {
 	if {$trivia_status == -1} {
 		putserv "PRIVMSG $trivia_channel :Trivia is currently disabled."
 		return 0
+	}
+
+	set alive [::mysql::ping $trivia_db_handle]
+	if {$alive == false} {
+		putlog "ERROR: mysql has gone away :("
+		putquick "PRIVMSG $trivia_channel :Unable to start game; can't reach database :("
 	}
 
 	# go go go
@@ -1341,6 +1366,8 @@ proc trivia_killwatchdog { } {
 trivia_killwatchdog
 set trivia_watchdog_timer [utimer 45 trivia_watchdog]
 #>>>
+
+trivia_connect
 
 putlog {TriviaEngine ENGAGED(*$£&($}
 
