@@ -65,10 +65,10 @@ setudef flag quoteengine
 proc quote_ping { } {
 	global db_handle
 
-	if [::mysql::ping $dbhandle] {
-		return 0
-	} else {
+	if [::mysql::ping $db_handle] {
 		return 1
+	} else {
+		return 0
 	}
 }
 
