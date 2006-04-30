@@ -59,6 +59,20 @@ setudef flag quoteengine
 ### procedures start here
 
 ################################################################################
+# quote_ping
+# Check we're still connected to mysql
+################################################################################
+proc quote_ping { } {
+	global db_handle
+
+	if [::mysql::ping $dbhandle] {
+		return 0
+	} else {
+		return 1
+	}
+}
+
+################################################################################
 # quote_add
 # !addquote <text>
 #   Adds a quote to the database
@@ -75,6 +89,11 @@ proc quote_add { nick host handle channel text } {
   if {($handle == "") || ($handle == "*")} {
     set handle $nick
   }
+
+	if {![quote_ping]} {
+		putquick "PRIVMSG $channel :Sorry, lost database connection :("
+		return 0
+	}
 
   set sql "INSERT INTO quotes VALUES(null, "
   append sql "'$handle', "
@@ -112,6 +131,11 @@ proc quote_rand { nick host handle channel text } {
   }
 
   if [matchattr $handle $quote_noflags] { return 0 }
+
+	if {![quote_ping]} {
+		putquick "PRIVMSG $channel :Sorry, lost database connection :("
+		return 0
+	}
 
   set where_clause "WHERE channel='$channel'"
   if [regexp -- "--?all" $text] {
@@ -159,6 +183,11 @@ proc quote_fetch { nick host handle channel text } {
     puthelp "PRIVMSG $channel: Use: !getquote <id>"
     return 0
   }
+
+	if {![quote_ping]} {
+		putquick "PRIVMSG $channel :Sorry, lost database connection :("
+		return 0
+	}
 
 	set text [mysqlescape $text]
   set sql "SELECT * FROM quotes WHERE id='$text'"
@@ -214,6 +243,11 @@ proc quote_search { nick host handle channel text } {
     puthelp "PRIVMSG $channel :Use: !findquote <text>"
     return 0
   }
+
+	if {![quote_ping]} {
+		putquick "PRIVMSG $channel :Sorry, lost database connection :("
+		return 0
+	}
 
   set where_clause "AND channel='[mysqlescape $channel]'"
   if [regexp -- "--?all " $text matches skip1] {
@@ -319,6 +353,11 @@ proc quote_stats { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
+	if {![quote_ping]} {
+		putquick "PRIVMSG $channel :Sorry, lost database connection :("
+		return 0
+	}
+
   set sql "SELECT COUNT(*) AS total FROM quotes WHERE channel='$channel'"
   putloglev d * "QuoteEngine: executing $sql"
 
@@ -372,6 +411,11 @@ proc quote_delete  { nick host handle channel text } {
   }
 
   if [matchattr $handle $quote_noflags] { return 0 }
+
+	if {![quote_ping]} {
+		putquick "PRIVMSG $channel :Sorry, lost database connection :("
+		return 0
+	}
 
   set text [mysqlescape $text]
   if {![matchattr $handle m|m $channel]} {
