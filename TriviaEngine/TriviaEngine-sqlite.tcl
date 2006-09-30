@@ -84,6 +84,7 @@ proc trivia_msg { nick host handle cmd } {
 	putlog "trivia: msg command $cmd from $nick"
 
 	if {($nick == "Greeneyez") || ($nick == "JamesOff")} {
+#<<< set a question's category
 		if [regexp -nocase "^setcat (.+)" $cmd matches category] {
 
 			if {$trivia_last_qid == 0} {
@@ -115,6 +116,87 @@ proc trivia_msg { nick host handle cmd } {
 				return
 			}
 		}
+#>>>
+
+#<<< handle reports
+		if [regexp -nocase {^report (help|list|fix|view|done)?( .+)?} $cmd matches func arg] {
+			if {($func == "") || ($func == "help")} {
+				puthelp "PRIVMSG $nick :Use: report (list|view|fix|done)"
+				puthelp "PRIVMSG $nick :report list: see 10 reports"
+				puthelp "PRIVMSG $nick :report view <id>: see the question and answer associated with a report"
+				puthelp "PRIVMSG $nick :report fix <id> (question|answer) <new text>: update a question or answer"
+				puthelp "PRIVMSG $nick :report done <id>: mark a report as done"
+				return 0
+			}
+
+			if {$func == "list"} {
+				putserv "PRIVMSG $nick :Gathering 10 trivia reports..."
+				set sql "SELECT * FROM reports WHERE resolved = 'N' LIMIT 10"
+				trivia_db_handle eval $sql result {
+					putserv "PRIVMSG $nick :$result(report_id): [format %10s $result(who)] $result(message)"
+				}
+				return 0
+			}
+
+			if {$func == "view"} {
+				if {$arg == ""} {
+					puthelp "PRIVMSG $nick :Use: report view <id>"
+					return 0
+				}
+
+				set arg [string trim $arg]
+				set arg [trivia_sqlite_escape $arg]
+				set sql "SELECT * FROM reports, questions WHERE report_id = '$arg' AND reports.question_id = questions.question_id"
+				trivia_db_handle eval $sql result {
+					putserv "PRIVMSG $nick :Report$trivia_c(purple) $result(report_id) $trivia_c(off)by$trivia_c(purple) $result(who) $trivia_c(off)on$trivia_c(blue) [clock format $result(when) -gmt 1]"
+					putserv "PRIVMSG $nick :Question: $result(question)"
+					putserv "PRIVMSG $nick :  Answer: $result(answer)"
+					putserv "PRIVMSG $nick :  Report: $result(message)"
+				}
+				return 0
+			}
+
+			if {$func == "fix"} {
+				set arg [string trim $arg]
+				if [regexp -nocase {([0-9]+) (question|answer) (.+)} $arg matches report_id thing fix] {
+					putserv "PRIVMSG $nick :Attempting to fix $trivia_c(purple)$thing$trivia_c(off) from report$trivia_c(purple) $report_id"
+					#get question ID for this report
+					set sql "SELECT question_id FROM reports WHERE report_id = '$report_id'"
+					putloglev d * $sql
+					set question_id 0
+					trivia_db_handle eval $sql result {
+						set question_id $result(question_id)
+					}
+					
+					if {$question_id == 0} {
+						putserv "PRIVMSG $nick :I can't seem to find that report, sorry :("
+						return 0
+					}
+
+					set fix [trivia_sqlite_escape $fix]
+					set sql "UPDATE questions SET $thing = '$fix' WHERE question_id = '$question_id'"
+					putloglev d * $sql
+					trivia_db_handle eval $sql
+
+					putserv "PRIVMSG $nick :Updated!"
+					return 0
+				} else {
+					puthelp "PRIVMSG $nick :Use: report fix <id> (question|answer) <new text>"
+					return 0
+				}
+			}
+
+			if {$func == "done"} {
+				set arg [string trim $arg]
+				set arg [trivia_sqlite_escape $arg]
+				putserv "PRIVMSG $nick :Marking report$trivia_c(purple) $arg $trivia_c(off)as done."
+				set sql "UPDATE reports SET resolved = 'Y' WHERE report_id = '$arg'"
+				putloglev d * $sql
+				trivia_db_handle eval $sql
+				return 0
+			}
+		}
+#>>>
 	}
 }
 #>>>
