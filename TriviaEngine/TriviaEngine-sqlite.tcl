@@ -166,6 +166,8 @@ proc trivia_input { nick host handle channel arg } {
 	set arg [string tolower $arg]
 	set arg [string trim $arg]
 	if {$arg == [string tolower $trivia_q_answer]} {
+		# try to stop any other output
+		clearqueue server
 		trivia_correct $nick
 		return 0
 	}
