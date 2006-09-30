@@ -664,6 +664,13 @@ proc trivia_get_question { } {
 		set trivia_q_question $question
 		set trivia_q_answer [string toupper $answer]
 		set trivia_q_hint ""
+
+		#tidy up question and answer
+		regsub -all "  +" $trivia_q_question " " trivia_q_question
+		regsub -all "  +" $trivia_q_answer " " trivia_q_answer
+
+		set trivia_q_question [string trim $trivia_q_question]
+		set trivia_q_answer [string trim $trivia_q_answer]
 	} 
 
 	if {$trivia_q_id == ""} {
