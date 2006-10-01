@@ -207,6 +207,7 @@ proc trivia_msg { nick host handle cmd } {
 				putloglev d * $sql
 				trivia_db_handle eval $sql
 				return 0
+			}
 		}
 #>>>
 	}
