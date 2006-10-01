@@ -195,6 +195,18 @@ proc trivia_msg { nick host handle cmd } {
 				trivia_db_handle eval $sql
 				return 0
 			}
+
+			if {$func == "delete"} {
+				set arg [string trim $arg]
+				set arg [trivia_sqlite_escape $arg]
+				putserv "PRIVMSG $nick :Deleting question from report$trivia_c(purple) $arg $trivia_c(off) and marking report as done."
+				set sql "DELETE FROM questions WHERE question_id IN (SELECT question_id FROM reports WHERE report_id = '$arg')"
+				putloglev d * $sql
+				trivia_db_handle eval $sql
+				set sql "UPDATE reports SET resoved = 'Y' WHERE report_id = '$arg'"
+				putloglev d * $sql
+				trivia_db_handle eval $sql
+				return 0
 		}
 #>>>
 	}
