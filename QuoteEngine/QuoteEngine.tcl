@@ -19,7 +19,17 @@ package require mysqltcl
 
 # connect to database
 # CHANGE ME
-set db_handle [mysqlconnect -host localhost -user notopic -password moo -db quotes]
+proc quote_connect { } {
+	global db_handle
+		
+	set db_handle [mysqlconnect -host localhost -user notopic -password moo -db quotes]
+
+	if {$db_handle != ""} {
+		return 1
+	} else {
+		return 0
+	}
+}
 
 # url to site
 # CHANGE ME (use blank if you're not using the PHP script)
@@ -47,7 +57,7 @@ set quote_noflags "Q|Q"
 
 # maximum number of quotes to show in channel when searching before switching
 # to /msg'ing the user
-set quote_chanmax 0
+set quote_chanmax 5
 
 ### code starts here (no need to edit stuff below currently)
 #1.00
@@ -68,7 +78,7 @@ proc quote_ping { } {
 	if [::mysql::ping $db_handle] {
 		return 1
 	} else {
-		return 0
+		return [quote_connect]
 	}
 }
 
@@ -290,7 +300,7 @@ proc quote_search { nick host handle channel text } {
         puthelp "PRIVMSG $nick :Rest of matches for your search '$text' follow in private:"
       }
 
-      if {$count < 5} {
+      if {$count < $quote_chanmax} {
         puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
       } else {
         puthelp "PRIVMSG $nick :\[\002$id\002\] $quote"
@@ -300,17 +310,23 @@ proc quote_search { nick host handle channel text } {
 
     set remaining [mysqlresult $db_handle rows?]
     if {$remaining > 0} {
+			if {$count < $quote_chanmax} {
+				set command "PRIVMSG $channel :"
+			} else {
+				set command "PRIVMSG $nick :"
+			}
+
       regsub "#" $channel "" chan
       if {$php_page != ""} {
-        puthelp "PRIVMSG $channel :(Plus $remaining more matches: $php_page?filter=${text}&channel=${chan}&search=search)"
+        puthelp "${command}(Plus $remaining more matches: $php_page?filter=${text}&channel=${chan}&search=search)"
       } else {
-        puthelp "PRIVMSG $channel :Plus $remaining other matches"
+        puthelp "${command}Plus $remaining other matches"
       }
     } else {
       if {$count == 1} {
-        puthelp "PRIVMSG $channel :(All of 1 match)"
+        puthelp "${command}(All of 1 match)"
       } else {
-        puthelp "PRIVMSG $channel :(All of $count matches)"
+        puthelp "${command}(All of $count matches)"
       }
     }
   } else {
@@ -486,4 +502,5 @@ proc quote_version { nick host handle channel text } {
   return 0
 }
 
+quote_connect
 putlog "QuoteEngine $quote_version loaded"
