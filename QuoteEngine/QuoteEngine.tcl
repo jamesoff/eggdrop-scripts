@@ -122,7 +122,7 @@ proc quote_add { nick host handle channel text } {
     set id [mysqlinsertid $db_handle]
     puthelp "PRIVMSG $channel :Quote \002$id\002 added"
 		if [regexp {[^]> ]\|[[<0-9(]} $text] {
-			puthelp "PRIVMSG $nick :It's possible you didn't split the lines quite right on the quote you just added. For best results, split lines in quotes using '|' with a space each side. To delete the quote you just added and fix it, do '!quote del $id' in the channel."
+			puthelp "PRIVMSG $nick :It's possible you didn't split the lines quite right on the quote you just added. For best results, split lines in quotes using '|' with a space each side. To delete the quote you just added and fix it, do '!delquote $id' in the channel."
 		}
   }
 }
