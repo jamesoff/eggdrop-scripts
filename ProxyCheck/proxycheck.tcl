@@ -107,7 +107,8 @@ proc proxycheck_check3 { ip host status nick orighost channel rbl } {
       return 0
     }
     set proxycheck_lastip $ip
-    putlog "proxycheck: got host $host = ip $ip from RBL $rbl ... banning"
+    putloglev d * "proxycheck: got host $host = ip $ip from RBL $rbl ... banning"
+		putlog "proxycheck: $nick ($orighost) is listed in $rbl ... banning from $channel"
     newchanban $channel "*@$orighost" "proxychk" "proxycheck: $rbl" $proxycheck_bantime
   }
   #if we didn't get a host, they're not in RBL
