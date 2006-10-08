@@ -1,5 +1,5 @@
 # The trivia engine YAY
-# vim: foldmethod=marker:foldcolumn=2:foldmarker=<<<,>>>:sw=2:ts=2
+# vim: foldmethod=marker:foldcolumn=2:foldmarker=<<<,>>>:sw=2:ts=2 
 
 ### INIT <<<
 package require sqlite
@@ -98,7 +98,7 @@ proc trivia_msg { nick host handle cmd } {
 			set cat_id 0
 			
 			set cat_id [trivia_db_handle eval $sql]
-			if {$cat_id != 0} {
+			if {$cat_id != ""} {
 				puthelp "PRIVMSG $nick :Moving question $trivia_last_qid to category$trivia_c(purple) $category$trivia_c(off) ($cat_id)"
 				set sql "UPDATE questions SET cat_id='$cat_id' WHERE question_id='$trivia_last_qid'"
 				trivia_db_handle eval $sql
@@ -107,10 +107,12 @@ proc trivia_msg { nick host handle cmd } {
 			} else {
 				puthelp "PRIVMSG $nick :Creating new category$trivia_c(purple) $category"
 				set sql "INSERT INTO categories VALUES (null, '$category', 1)"
+				putloglev d * $sql
 				trivia_db_handle eval $sql
 				set cat_id [trivia_db_handle last_insert_rowid]
 				puthelp "PRIVMSG $nick :Moving question $trivia_last_qid to category$trivia_c(purple) $category$trivia_c(off) ($cat_id)"
 				set sql "UPDATE questions SET cat_id='$cat_id' WHERE question_id='$trivia_last_qid'"
+				putloglev d * $sql
 				trivia_db_handle eval $sql
 				set trivia_q_cat $orig_cat
 				return
