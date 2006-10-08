@@ -13,6 +13,9 @@ set trivia_speed 20
 # the time between rounds (sec)
 set trivia_delay 30
 
+# allow new categories to be created?
+set trivia_allow_new_cats 0
+
 # hold the current question info <<<
 set trivia_q_id ""
 set trivia_q_cat ""
@@ -78,7 +81,7 @@ set trivia_admin S
 proc trivia_msg { nick host handle cmd } {
 	#<<<
 	global trivia_db_handle trivia_last_qid
-	global trivia_q_cat trivia_c
+	global trivia_q_cat trivia_c trivia_allow_new_cats
 
 	regsub "(trivia )" $cmd "" cmd
 	putlog "trivia: msg command $cmd from $nick"
@@ -105,19 +108,42 @@ proc trivia_msg { nick host handle cmd } {
 				set trivia_q_cat $orig_cat
 				return
 			} else {
-				puthelp "PRIVMSG $nick :Creating new category$trivia_c(purple) $category"
-				set sql "INSERT INTO categories VALUES (null, '$category', 1)"
-				putloglev d * $sql
-				trivia_db_handle eval $sql
-				set cat_id [trivia_db_handle last_insert_rowid]
-				puthelp "PRIVMSG $nick :Moving question $trivia_last_qid to category$trivia_c(purple) $category$trivia_c(off) ($cat_id)"
-				set sql "UPDATE questions SET cat_id='$cat_id' WHERE question_id='$trivia_last_qid'"
-				putloglev d * $sql
-				trivia_db_handle eval $sql
-				set trivia_q_cat $orig_cat
+				if {$trivia_allow_new_cats == 1} {
+					puthelp "PRIVMSG $nick :Creating new category$trivia_c(purple) $category"
+						set sql "INSERT INTO categories VALUES (null, '$category', 1)"
+						putloglev d * $sql
+						trivia_db_handle eval $sql
+						set cat_id [trivia_db_handle last_insert_rowid]
+						puthelp "PRIVMSG $nick :Moving question $trivia_last_qid to category$trivia_c(purple) $category$trivia_c(off) ($cat_id)"
+						set sql "UPDATE questions SET cat_id='$cat_id' WHERE question_id='$trivia_last_qid'"
+						putloglev d * $sql
+						trivia_db_handle eval $sql
+						set trivia_q_cat $orig_cat
+				} else {
+					puthelp "PRIVMSG $nick :Creating new categories is $trivia_c(purple)DISABLED$trivia_c(off). ('trivia newcat enable' to enable.)"
+				}
 				return
 			}
 		}
+#>>>
+
+	#<<< enable or disable new category creation
+	if [regexp -nocase "^newcat (enable|disable)" $cmd matches toggle] {
+		if {$toggle == "enable"} {
+			puthelp "PRIVMSG $nick :$trivia_c(purple)ENABLING$trivia_c(off) new category creation"
+			set trivia_allow_new_cats 1
+			return
+		}
+
+		if {$toggle == "disable"} {
+			puthelp "PRIVMSG $nick :$trivia_c(purple)DISABLING$trivia_c(off) new category creation"
+			set trivia_allow_new_cats 0
+			return
+		}
+
+		puthelp "PRIVMSG $nick :Use: trivia newcat enable|disable"
+		return
+	}
 #>>>
 
 #<<< handle reports
@@ -236,7 +262,7 @@ proc trivia_input { nick host handle channel arg } {
 			puthelp "PRIVMSG $trivia_channel :!trivia ... ?"
 			return 0
 		} else {
-			puthelp "PRIGMSG $trivia_channel :Perhaps you want $trivia_c(purple)!trivia start"
+			puthelp "PRIVMSG $trivia_channel :Perhaps you want $trivia_c(purple)!trivia start"
 			return 0
 		}
 	}
@@ -597,7 +623,7 @@ proc trivia_command { nick host handle channel param } {
 
 	if {$param == "merge"} {
 		trivia_merge $nick $arg
-		#puthelp "PRIGMSG $trivia_channel :Score merging is disabled"
+		#puthelp "PRIVMSG $trivia_channel :Score merging is disabled"
 		return 0
 	}
 
