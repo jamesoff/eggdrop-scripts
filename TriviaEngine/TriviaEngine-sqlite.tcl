@@ -1347,12 +1347,13 @@ proc trivia_report { nick msg } {
 # Watchdog timer to make sure we're not ruined
 proc trivia_watchdog { } {
 #<<<
-	global trivia_last_ts trivia_watchdog_timer trivia_status trivia_channel
+	global trivia_last_ts trivia_watchdog_timer trivia_status trivia_channel trivia_delay trivia_speed
 
 	putloglev d * "trivia watchdog: tick"
 
-	if {$trivia_last_ts == 0} {
-		#never asked a question
+	# slow down if we've never asked a question or we're stopped
+	if {($trivia_last_ts == 0) || ($trivia_status == 0)} {
+		putloglev 1 * "trivia is not running, slowing down watchdog"
 		set trivia_watchdog_timer [utimer 45 trivia_watchdog]
 		return 0
 	}
@@ -1360,15 +1361,20 @@ proc trivia_watchdog { } {
 	set current_ts [clock seconds]
 	set difference [expr $current_ts - $trivia_last_ts]
 
-	if {$difference > 0} {
+	set trivia_limit [expr $trivia_delay + $trivia_speed + 5]
+
+	putloglev 1 * "trivia watchdog: current: $current_ts, last: $trivia_last_ts, difference: $difference, max: $trivia_limit"
+
+	if {$difference > $trivia_limit} {
 		if {$trivia_status == 1} {
 			putlog "watchdog: trivia is broken"
-			#putserv "PRIVMSG $trivia_channel :Oops, I think I'm broken. Attempting to recover..."
-			#set trivia_status 0
-			#trivia_start
-			putlog "trivia watchdog: current: $current_ts, last: $trivia_last_ts, difference: $difference"
+			putquick "PRIVMSG $trivia_channel :Oops, I think I'm broken. Attempting to recover..."
+			set trivia_status 0
+			trivia_start
 		}
 	}
+
+	set timer_interval [expr $trivia_delay * 2]
 
 	set trivia_watchdog_timer [utimer 10 trivia_watchdog]
 	return 0
@@ -1380,9 +1386,19 @@ proc trivia_killwatchdog { } {
 #<<<
 	global trivia_watchdog_timer
 
-	if {$trivia_watchdog_timer != ""} {
-		killutimer $trivia_watchdog_timer
-	}
+  set alltimers [utimers]
+  foreach t $alltimers {
+    putloglev 1 * "checking timer $t"
+    set t_function [lindex $t 1]
+    set t_name [lindex $t 2]
+    set t_function [string tolower $t_function]
+		if {$t_function == "trivia_watchdog"} {
+			putloglev d * "killing timer $t_name"
+      killutimer $t_name
+		}
+  }
+
+	unset trivia_watchdog_timer
 }
 #>>>
 
