@@ -149,7 +149,7 @@ proc trivia_msg { nick host handle cmd } {
 #<<< handle reports
 		if [regexp -nocase {^report (help|list|fix|view|done)?( .+)?} $cmd matches func arg] {
 			if {($func == "") || ($func == "help")} {
-				puthelp "PRIVMSG $nick :Use: report (list|view|fix|done)"
+				puthelp "PRIVMSG $nick :Use: report (list|view|fix|done|delete)"
 				puthelp "PRIVMSG $nick :report list: see 10 reports"
 				puthelp "PRIVMSG $nick :report view <id>: see the question and answer associated with a report"
 				puthelp "PRIVMSG $nick :report fix <id> (question|answer) <new text>: update a question or answer"
@@ -231,7 +231,7 @@ proc trivia_msg { nick host handle cmd } {
 				set sql "DELETE FROM questions WHERE question_id IN (SELECT question_id FROM reports WHERE report_id = '$arg')"
 				putloglev d * $sql
 				trivia_db_handle eval $sql
-				set sql "UPDATE reports SET resoved = 'Y' WHERE report_id = '$arg'"
+				set sql "UPDATE reports SET resolved = 'Y' WHERE report_id = '$arg'"
 				putloglev d * $sql
 				trivia_db_handle eval $sql
 				return 0
