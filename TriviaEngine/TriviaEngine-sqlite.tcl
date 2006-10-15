@@ -16,6 +16,9 @@ set trivia_delay 30
 # allow new categories to be created?
 set trivia_allow_new_cats 0
 
+# time before end of round to start counting down
+set trivia_time_left_warning 86400
+
 # hold the current question info <<<
 set trivia_q_id ""
 set trivia_q_cat ""
@@ -50,6 +53,11 @@ set trivia_status 0
 set trivia_timer ""
 set trivia_watchdog_timer ""
 set trivia_last_ts 0
+set trivia_score_time 0
+set trivia_debug_mode 0
+set trivia_warned 0
+set trivia_asking_question 0
+set trivia_current_leader -1
 
 #colours <<<
 set trivia_c(off) "\003"
@@ -145,6 +153,25 @@ proc trivia_msg { nick host handle cmd } {
 		return
 	}
 #>>>
+
+#<<< debug
+		if [regexp -nocase {^debug (.+)} $cmd matches func] {
+			global trivia_debug_mode
+			
+			if {$trivia_debug_mode == 0} {
+				putquick "PRIVMSG $nick :Debug mode is disabled. Cannot use debug commands."
+				return 0
+			}
+
+			if {$func == "endweek"} {
+				putquick "PRIVMSG $nick :Ending this week in 10 seconds..."
+				global trivia_score_time
+				set trivia_score_time [expr [clock seconds] + 10]
+				return 0
+			}
+		}
+#>>>
+
 
 #<<< handle reports
 		if [regexp -nocase {^report (help|list|fix|view|done)?( .+)?} $cmd matches func arg] {
@@ -308,6 +335,7 @@ proc trivia_correct { nick } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status
 	global trivia_timer trivia_delay trivia_db_handle trivia_unanswered trivia_run_qty trivia_run_last trivia_run_nick trivia_c
+	global trivia_score_time trivia_time_left_warning trivia_asking_question trivia_current_leader
 
 	if {$trivia_status != 1} {
 		#something strange going on
@@ -318,6 +346,7 @@ proc trivia_correct { nick } {
 	set answer $trivia_q_answer
 	set trivia_q_answer ""
 	set newuser 0
+	set trivia_asking_question 0
 
 	set uid [trivia_get_uid $nick]
 	if {$uid == 0} {
@@ -328,13 +357,21 @@ proc trivia_correct { nick } {
 
 	putlog "$nick has uid $uid"
 
+	set old_leader [trivia_leader]
+
 	trivia_incr_score $uid
 
 	putquick "PRIVMSG $trivia_channel :Congratulations $trivia_c(purple)$nick$trivia_c(off)! The answer was$trivia_c(purple) $answer$trivia_c(off)."
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
 	}	
-	putquick "PRIVMSG $trivia_channel :rank0rs: [trivia_near_five2 $uid]"
+	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five2 $uid]"
+
+	set leader [trivia_leader]
+
+	if {($leader != $old_leader) && ($leader != -1) && ($old_leader != -1)} {
+		putquick "PRIVMSG $trivia_channel :$trivia_c(purple) $nick $trivia_c(off) has taken the lead!"
+	}
 
 	#set score [trivia_get_score $uid]
 	#putserv "PRIVMSG $trivia_channel :$nick now has $score points."
@@ -360,6 +397,13 @@ proc trivia_correct { nick } {
 		putserv "PRIVMSG $trivia_channel :Remember, to report a problem with a question or answer, type $trivia_c(purple)!trivia report <description of problem>"
 	}
 
+	if {$trivia_score_time <= [clock seconds]} {
+		trivia_end_week
+	} else {
+		if {[expr $trivia_score_time - [clock seconds]] < $trivia_time_left_warning} {
+			putserv "PRIVMSG $trivia_channel :[trivia_score_time_left] until the end of this game!"
+		}
+	}
 
 	trivia_check_rehash
 }
@@ -384,6 +428,10 @@ proc trivia_get_run { row } {
 		3 {
 			return "is on a winning spree!"
 		}
+		4 {
+			puthelp "PRIVMSG $trivia_channel :QUAD DAMAGE!"
+			return "is on a roll ..."
+		}
 		5 {
 			return "is on a rampage!"
 		}
@@ -406,8 +454,10 @@ proc trivia_get_run { row } {
 
 # Escape stuff for SQL
 proc trivia_sqlite_escape { text } {
+#<<<
 	return [string map {' ''} $text]
 }
+#>>>
 
 # Get someone's user ID from their nick
 proc trivia_get_uid { nick } {
@@ -459,11 +509,13 @@ proc trivia_ts_to_date { ts } {
 # Get someone's userinfo from their UID
 proc trivia_get_userinfo { user_id } {
 #<<<
-	global trivia_db_handle
+	global trivia_db_handle trivia_channel
 
 	putloglev 4 * "trivia_get_userinfo ($user_id)"
+	set donestats 0
 
-	set sql "SELECT user_score, user_last, user_reg FROM users WHERE user_id = '$user_id'"
+	set sql "SELECT user_name, user_score, user_last, user_reg FROM users WHERE user_id = '$user_id'"
+
 	trivia_db_handle eval $sql {
 		if {$user_last == ""} {
 		  set last "Unknown"
@@ -477,9 +529,22 @@ proc trivia_get_userinfo { user_id } {
 			set reg [trivia_ts_to_date $user_reg]
 		}
 
-		return "$user_score|$last|$reg"
-	} 
-	return "No stats"
+		putserv "PRIVMSG $trivia_channel :Trivia stats for $user_name:"
+		putserv "PRIVMSG $trivia_channel :   Current score: $user_score"
+		putserv "PRIVMSG $trivia_channel :      First seen: $reg"
+		putserv "PRIVMSG $trivia_channel :     Last scored: $last"
+		set donestats 1
+	}
+
+	set sql "SELECT COUNT(dt) AS score FROM scores WHERE dt > [trivia_get_period] AND user_id = '$user_id'"
+	if {$donestats} {
+		trivia_db_handle eval $sql {
+			putserv "PRIVMSG $trivia_channel :Points this week: $score"
+			putserv "PRIVMSG $trivia_channel :  Weekly Ranking: [trivia_get_rank $user_id]"
+		}
+	} else {
+		putserv "PRIVMSG $trivia_channel :No stats found"
+	}
 }
 #>>>
 
@@ -490,21 +555,11 @@ proc trivia_user_stats { user_name } {
 
 	set uid [trivia_get_uid $user_name]
 	if {$uid == 0} {
-		putserv "PRIVMSG $trivia_channel :Unknown user '$user_name'"
-		return
-	}
-	set stats [trivia_get_userinfo $uid]
-	if {$stats == "No stats"} {
-		putserv "PRIVMSG $trivia_channel :No stats available."
+		putserv "PRIVMSG $trivia_channel :Unknown user '$user_name' (is the case right?)"
 		return
 	}
 
-	set stats2 [split $stats "|"]
-	putserv "PRIVMSG $trivia_channel :Trivia stats for $user_name:"
-	putserv "PRIVMSG $trivia_channel :  Current score: [lindex $stats2 0]"
-	putserv "PRIVMSG $trivia_channel :        Ranking: [trivia_get_rank $uid]"
-	putserv "PRIVMSG $trivia_channel :     First seen: [lindex $stats2 2]"
-	putserv "PRIVMSG $trivia_channel :    Last scored: [lindex $stats2 1]"
+	trivia_get_userinfo $uid
 }
 #>>>
 
@@ -515,7 +570,7 @@ proc trivia_incr_score { id { howmuch 1 } } {
 
 	putloglev 4 * "trivia_incr_score ($id, $howmuch)"
 
-	set sql "UPDATE users SET user_last = [clock seconds] WHERE user_id = '$id'"
+	set sql "UPDATE users SET user_last = [clock seconds], user_points = user_points + 1 WHERE user_id = '$id'"
 	trivia_db_handle eval $sql
 
 	set sql "INSERT INTO scores VALUES ('$id', '[clock seconds]')"
@@ -531,7 +586,7 @@ proc trivia_create_user { nick } {
 	putloglev 4 * "trivia_create_user ($nick)"
 
 	set nick [trivia_sqlite_escape $nick]
-	set sql "INSERT INTO users VALUES (null, '$nick', '', 0, [clock seconds], [clock seconds])"
+	set sql "INSERT INTO users VALUES (null, '$nick', '', 0, [clock seconds], [clock seconds], 0)"
 	trivia_db_handle eval $sql
 
 	set uid [trivia_db_handle last_insert_rowid]
@@ -585,8 +640,13 @@ proc trivia_command { nick host handle channel param } {
 		return 0
 	}
 
+	if {$param == "countdown"} {
+		trivia_countdown
+		return 0
+	}
+
   if {![matchattr $handle |$trivia_flag $channel]} {
-    putserv "PRIVMSG $nick :use: !trivia \[score|top10|start\]"
+    putserv "PRIVMSG $nick :use: !trivia \[score|top10|start|report\]"
     return 0
   }
 
@@ -694,6 +754,8 @@ proc trivia_enable {} {
 #Make a hint
 proc trivia_make_hint { hint answer } {
 #<<<
+	global trivia_debug_mode
+
 	set hint [string toupper $hint]
 	set answer [string toupper $answer]
 
@@ -771,6 +833,10 @@ proc trivia_make_hint { hint answer } {
 		incr i
 	}
 	set final_hint [string trim $final_hint]
+	if {$trivia_debug_mode == 1} {
+		return $answer
+	}
+
 	return $final_hint
 }
 #>>>
@@ -812,6 +878,7 @@ proc trivia_get_question { } {
 proc trivia_start_round { } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status trivia_last_qid
+	global trivia_asking_question
 
 	if {$trivia_status != 1} {
 		#we're switched off, abort
@@ -841,6 +908,8 @@ proc trivia_start_round { } {
 	set trivia_q_attempts 1
 
 	set trivia_last_qid $trivia_q_id
+
+	set trivia_asking_question 1
 
 	trivia_round
 }
@@ -982,12 +1051,14 @@ proc trivia_end_round { } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status
 	global trivia_timer trivia_delay trivia_db_handle trivia_unanswered
-	global trivia_run_last trivia_run_nick trivia_run_qty trivia_c
+	global trivia_run_last trivia_run_nick trivia_run_qty trivia_c trivia_score_time trivia_asking_question trivia_time_left_warning
 
 	if {$trivia_status != 1} {
 		#we're switched off, abort
 		return 0
 	}
+
+	set trivia_asking_question 0
 
 	set trivia_q_answer [string toupper $trivia_q_answer]
 	putquick "PRIVMSG $trivia_channel :Time's up! Nobody got it right. The answer was$trivia_c(purple) $trivia_q_answer"
@@ -1006,10 +1077,18 @@ proc trivia_end_round { } {
 	}
 
 	if {$trivia_unanswered > 3} {
-		putserv "PRIVMSG $trivia_channel :Three unanswered in a row, stopping the game."
+		putserv "PRIVMSG $trivia_channel :Four unanswered in a row, stopping the game."
+		putserv "PRIVMSG $trivia_channel :You can restart it with $trivia_c(purple)!t start"
 		set trivia_status 0
 	} else {
 		set trivia_timer [utimer $trivia_delay trivia_start_round]
+		if {$trivia_score_time <= [clock seconds]} {
+			trivia_end_week
+		} else {
+			if {[expr $trivia_score_time - [clock seconds]] < $trivia_time_left_warning} {
+				putserv "PRIVMSG $trivia_channel :[trivia_score_time_left] until the end of this game!"
+			}
+		}
 		trivia_check_rehash
 	}
 }
@@ -1019,7 +1098,7 @@ proc trivia_end_round { } {
 proc trivia_skip { nick } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status
-	global trivia_timer trivia_delay trivia_db_handle trivia_unanswered
+	global trivia_timer trivia_delay trivia_db_handle trivia_unanswered trivia_score_time
 
 	if {$trivia_status != 1} {
 		#we're switched off, abort
@@ -1038,6 +1117,9 @@ proc trivia_skip { nick } {
 
 	putserv "PRIVMSG $trivia_channel :Skipping this question by $nick's request."
 	set trivia_timer [utimer $trivia_delay trivia_start_round]
+	if {$trivia_score_time <= [clock seconds]} {
+		trivia_end_week
+	}
 }
 #>>>
 
@@ -1075,6 +1157,15 @@ proc trivia_start { } {
 
 	#trivia_stats
 
+	putquick "PRIVMSG $trivia_channel :[trivia_score_time_left] left until end of this game!"
+
+	#try to find last week's winner
+	set sql "SELECT winners.user_id, users.user_name FROM winners LEFT JOIN users USING(user_id) ORDER BY dt DESC, score DESC LIMIT 1"
+	putloglev d * $sql
+	trivia_db_handle eval $sql {
+		putquick "PRIVMSG $trivia_channel :Last week's winner was$trivia_c(purple) [string toupper $user_name]$trivia_c(off)!"
+	}
+
 	set trivia_unanswered 0
 	set trivia_run_last 0
 	set trivia_run_qty 0
@@ -1090,6 +1181,7 @@ proc trivia_stop { } {
 	global trivia_channel trivia_status
 
 	if {$trivia_status == 1} {
+		clearqueue server
 		putserv "PRIVMSG $trivia_channel :Trivia game stopped."
 		set trivia_status 0
 		trivia_killtimer
@@ -1164,7 +1256,11 @@ proc trivia_get_top10 { } {
 		append output ")  "
 	}
 
-	set output "The top $index players are... $output"
+	if {$index == 0} {
+		set output "No scores so far, everyone is equal first! \\o/"
+	} else {
+		set output "The top $index players are... $output"
+	}
 	return $output
 }
 #>>>
@@ -1295,6 +1391,20 @@ proc trivia_near_five2 { uid } {
 }
 #>>>
 
+# Get the current leader's UID
+proc trivia_leader { } {
+	global trivia_db_handle
+
+	set dt [trivia_get_period]
+	set sql "SELECT user_id, count(dt) AS user_score FROM scores WHERE dt > $dt GROUP BY user_id ORDER BY COUNT(dt) DESC LIMIT 1"
+	set uid -1
+	trivia_db_handle eval $sql {
+		set uid $user_id
+	}
+
+	return $uid
+}
+
 # Get some stats from the DB
 proc trivia_stats { } {
 #<<<
@@ -1422,6 +1532,11 @@ proc trivia_killwatchdog { } {
 			putloglev d * "killing timer $t_name"
       killutimer $t_name
 		}
+
+		if {$t_function == "trivia_score_rot_timer"} {
+			putloglev d * "killing timer $t_name"
+			killutimer $t_name
+		}
   }
 
 	unset trivia_watchdog_timer
@@ -1432,7 +1547,199 @@ trivia_killwatchdog
 set trivia_watchdog_timer [utimer 45 trivia_watchdog]
 #>>>
 
+#<<< SCORE ROTATION STUFF
+
+#take this week's scores and figure out this week's winners
+proc trivia_score_winners { } {
+	#<<<
+	global trivia_db_handle trivia_channel
+
+	set winners [list]
+
+	set now [clock seconds]
+
+	set updates [list]
+	
+	#knock off a week
+	set cutoff [expr $now - 604800]
+	
+	set sql "SELECT user_id, COUNT(*) AS score FROM scores WHERE dt > $cutoff GROUP BY user_id ORDER BY score DESC LIMIT 5"
+	putloglev d * $sql
+
+	trivia_db_handle eval $sql {
+		lappend winners [list $user_id $score]
+	}
+
+	set winner_name [list]
+
+	foreach winner $winners {
+		set sql "SELECT user_name FROM users WHERE user_id = '[trivia_sqlite_escape [lindex $winner 0]]'"
+		putloglev d * $sql
+		trivia_db_handle eval $sql {
+			lappend winner_name [list $user_name [lindex $winner 0] [lindex $winner 1]]
+		}
+	}
+		
+	putlog $winners
+	putlog $winner_name
+
+	putserv "PRIVMSG $trivia_channel :This week's winners are:"
+	set position 1
+	foreach winner $winner_name {
+		#smudge woz ere
+		putserv "PRIVMSG $trivia_channel :$position[trivia_ordinal $position] place: [lindex $winner 0] with [lindex $winner 2] points"
+		set sql "INSERT INTO winners VALUES ([lindex $winner 1], $now, [expr 6 - $position])"
+		putloglev d * $sql
+		trivia_db_handle eval $sql
+
+		set sql "UPDATE users SET user_score = user_score + [expr 6 - $position]"
+		putloglev d * $sql
+		trivia_db_handle eval $sql
+
+		incr position
+	}
+
+	set sql "DELETE FROM scores"
+	putloglev d * $sql
+	trivia_db_handle eval $sql
+}
+
+#>>>
+
+#get the timestamp for next cutoff
+proc trivia_score_get_time { } {
+#<<<
+	global trivia_score_time
+
+	set trivia_score_time [clock scan "saturday"]
+	if {$trivia_score_time < [clock seconds]} {
+		set trivia_score_time [clock scan "next saturday"]
+	}
+	putloglev d * "setting next score rotation to [clock format $trivia_score_time]"
+}
+#>>>
+
+#figure out how long is left until the score rotation
+proc trivia_score_time_left { } {
+	#<<<
+	global trivia_score_time
+
+	set now [clock seconds]
+	if {$now > $trivia_score_time} {
+		#erk
+		putloglev d * "trivia_score_time_left: oops!"
+		putloglev d * "now: $now, time: $trivia_score_time"
+		putloglev d * [clock format $now]
+		putloglev d * [clock format $trivia_score_time]
+		return
+	}
+	
+	set diff [expr $trivia_score_time - $now]
+	putloglev d * "trivia_score_time_left: difference is $diff seconds"
+
+	if {$diff > 60} {
+		return [trivia_time_to_words $diff]
+	} else {
+		return "less than a minute"
+	}
+}
+#>>>
+
+proc trivia_time_to_words { time } {
+#<<<
+	putloglev 2 * "trivia_time_to_words $time"
+	set output ""
+
+	if {$time > 86400} {
+		set days [expr $time / 86400]
+		append output $days
+		append output " day"
+		if {$days > 1} {
+			append output "s"
+		}
+		set time [expr $time - [expr $days * 86400]]
+	append output " "
+	}
+
+	if {$time > 3600} {
+		set hours [expr $time / 3600]
+		append output $hours
+		append output " hour"
+		if {$hours > 1} {
+			append output "s"
+		}
+		set time [expr $time - [expr $hours * 3600]]
+	append output " "
+	}
+
+	if {$time > 60} {
+		set mins [expr $time / 60]
+		append output $mins
+		append output " minute"
+		if {$mins > 1} {
+			append output "s"
+		}
+	}
+
+	set output [string trim $output]
+	putloglev d * "trivia_time_to_words returing $output"
+	return $output
+}
+#>>>
+
+proc trivia_score_rot_timer { } {
+	global trivia_score_time trivia_channel trivia_c trivia_asking_question trivia_warned
+
+	putloglev 1 * "score_rot tick"
+	utimer 10 trivia_score_rot_timer
+
+	if {[clock seconds] > $trivia_score_time} {
+		#end of week!
+
+		putlog "trivia: end of week"
+
+		if {$trivia_asking_question == 1} {
+			putlog "trivia: game is running"
+			if {$trivia_warned == 0} {
+				putlog "trivia: need to warn"
+				putquick "PRIVMSG $trivia_channel :$trivia_c(red)### BING BONG ###"
+				putquick "PRIVMSG $trivia_channel :I've started so I'll finish."
+				set trivia_warned 1
+			}
+			return 0
+		} else {
+			putlog "trivia: not running game, ending week now"
+			trivia_end_week
+			return 0
+		}
+	}
+	set trivia_warned 0
+}
+#>>>
+
+# handle end of week
+proc trivia_end_week { } {
+	global trivia_channel trivia_score_time
+
+	# set next week end
+	trivia_score_get_time
+
+	# move scores around
+	trivia_score_winners
+}
+
+# Announce the time remaining
+proc trivia_countdown { } {
+#<<<
+	global trivia_channel
+
+	putserv "PRIVMSG $trivia_channel :[trivia_score_time_left] left until end of this game."
+}
+#>>>
+
 trivia_connect
+trivia_score_get_time
+utimer 10 trivia_score_rot_timer
 
 putlog {TriviaEngine ENGAGED(*$£&($}
 
