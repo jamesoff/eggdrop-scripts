@@ -82,7 +82,27 @@ proc trivia_connect { } {
 ### SETTINGS <<<
 set trivia_flag T
 set trivia_admin S
+
+#botnet handle of the bmotion bot we're going to play with (set blank to disable)
+set trivia_bmotion_bot "NoTopic"
 # >>>
+
+# Send a botnet command to the bmotion bot
+proc trivia_bmotion_send { command params } {
+	global trivia_bmotion_bot
+	
+	if {$trivia_bmotion_bot == ""} {
+		return 0
+	}
+
+	if [islinked $trivia_bmotion_bot] {
+		putbot $trivia_bmotion_bot "trivia $command :$params"
+		putloglev d * "triviaengine: send $command to $trivia_bmotion_bot with params $params"
+	} else {
+		putlog "triviaengine: trying to communicate with bmotion bot $trivia_bmotion_bot but it's not linked"
+	}
+}
+
 
 
 # Handle a /msg
@@ -362,6 +382,8 @@ proc trivia_correct { nick } {
 	trivia_incr_score $uid
 
 	putquick "PRIVMSG $trivia_channel :Congratulations $trivia_c(purple)$nick$trivia_c(off)! The answer was$trivia_c(purple) $answer$trivia_c(off)."
+
+	trivia_bmotion_send "winner" "$nick $answer"
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
 	}	
@@ -878,7 +900,7 @@ proc trivia_get_question { } {
 proc trivia_start_round { } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status trivia_last_qid
-	global trivia_asking_question
+	global trivia_asking_question trivia_delay
 
 	if {$trivia_status != 1} {
 		#we're switched off, abort
@@ -911,7 +933,10 @@ proc trivia_start_round { } {
 
 	set trivia_asking_question 1
 
+	trivia_bmotion_send "start" "$trivia_channel $trivia_delay"
+
 	trivia_round
+
 }
 #>>>
 
@@ -937,6 +962,7 @@ proc trivia_round { } {
 
 	#update the hint
 	set trivia_q_hint [trivia_make_hint $trivia_q_hint $trivia_q_answer]
+	putlog "hint is $trivia_q_hint"
 
 	#say our stuff
 	if {$trivia_q_attempts > 1} {
@@ -958,6 +984,8 @@ proc trivia_round { } {
 	putserv "PRIVMSG $trivia_channel :Hint$hint: [trivia_explode $trivia_q_hint]"
 
 	incr trivia_q_attempts
+
+	trivia_bmotion_send "hint" [string map {_ .} $trivia_q_hint]
 
 	set trivia_last_ts [clock seconds]
 
@@ -1060,6 +1088,9 @@ proc trivia_end_round { } {
 
 	set trivia_asking_question 0
 
+	trivia_bmotion_send "winner" "* $trivia_q_answer"
+	trivia_bmotion_send "stop" ""
+
 	set trivia_q_answer [string toupper $trivia_q_answer]
 	putquick "PRIVMSG $trivia_channel :Time's up! Nobody got it right. The answer was$trivia_c(purple) $trivia_q_answer"
 	set trivia_q_answer ""
@@ -1114,6 +1145,8 @@ proc trivia_skip { nick } {
 	set trivia_q_answer ""
 
 	trivia_killtimer
+
+	trivia_bmotion_send "stop" ""
 
 	putserv "PRIVMSG $trivia_channel :Skipping this question by $nick's request."
 	set trivia_timer [utimer $trivia_delay trivia_start_round]
@@ -1184,6 +1217,7 @@ proc trivia_stop { } {
 		clearqueue server
 		putserv "PRIVMSG $trivia_channel :Trivia game stopped."
 		set trivia_status 0
+		trivia_bmotion_send "stop" ""
 		trivia_killtimer
 	}
 	return 0
