@@ -900,7 +900,7 @@ proc trivia_get_question { } {
 proc trivia_start_round { } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status trivia_last_qid
-	global trivia_asking_question trivia_delay
+	global trivia_asking_question trivia_delay botnick
 
 	if {$trivia_status != 1} {
 		#we're switched off, abort
@@ -933,7 +933,7 @@ proc trivia_start_round { } {
 
 	set trivia_asking_question 1
 
-	trivia_bmotion_send "start" "$trivia_channel $trivia_delay"
+	trivia_bmotion_send "start" "$trivia_channel $trivia_delay $botnick"
 
 	trivia_round
 
