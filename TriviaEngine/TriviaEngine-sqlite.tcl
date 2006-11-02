@@ -446,12 +446,13 @@ proc trivia_check_rehash { } {
 # Turn a winning spree into text
 proc trivia_get_run { row } {
 #<<<
+	global trivia_channel trivia_c
 	switch $row {
 		3 {
 			return "is on a winning spree!"
 		}
 		4 {
-			puthelp "PRIVMSG $trivia_channel :QUAD DAMAGE!"
+			puthelp "PRIVMSG $trivia_channel :$trivia_c(blue)QUAD DAMAGE!"
 			return "is on a roll ..."
 		}
 		5 {
@@ -1384,7 +1385,7 @@ proc trivia_near_five2 { uid } {
 	trivia_db_handle eval $sql {
 		set line [list]
 		lappend line $user_id
-		lappend line $user_name
+		lappend line [trivia_question_inject $user_name]
 		lappend line $user_score
 		putlog "adding line $line"
 		lappend result $line
