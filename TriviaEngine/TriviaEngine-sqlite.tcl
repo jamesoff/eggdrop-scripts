@@ -194,7 +194,7 @@ proc trivia_msg { nick host handle cmd } {
 
 
 #<<< handle reports
-		if [regexp -nocase {^report (help|list|fix|view|done)?( .+)?} $cmd matches func arg] {
+		if [regexp -nocase {^report (help|list|fix|view|done|delete)?( .+)?} $cmd matches func arg] {
 			if {($func == "") || ($func == "help")} {
 				puthelp "PRIVMSG $nick :Use: report (list|view|fix|done|delete)"
 				puthelp "PRIVMSG $nick :report list: see 10 reports"
@@ -423,7 +423,14 @@ proc trivia_correct { nick } {
 		trivia_end_week
 	} else {
 		if {[expr $trivia_score_time - [clock seconds]] < $trivia_time_left_warning} {
-			putserv "PRIVMSG $trivia_channel :[trivia_score_time_left] until the end of this game!"
+			set diff [expr $trivia_score_time - [clock seconds]]
+			set diff $diff.0
+			set nearness [expr $diff / $trivia_time_left_warning * 100]
+			set chance [rand 100]
+			putlog "diff = $diff, nearness = $nearness, chance = $chance"
+			if {$chance < $nearness} {
+				putserv "PRIVMSG $trivia_channel :[trivia_score_time_left] until the end of this game!"
+			}
 		}
 	}
 
@@ -1117,9 +1124,16 @@ proc trivia_end_round { } {
 		if {$trivia_score_time <= [clock seconds]} {
 			trivia_end_week
 		} else {
-			if {[expr $trivia_score_time - [clock seconds]] < $trivia_time_left_warning} {
+		if {[expr $trivia_score_time - [clock seconds]] < $trivia_time_left_warning} {
+			set diff [expr $trivia_score_time - [clock seconds]]
+			set diff $diff.0
+			set nearness [expr $diff / $trivia_time_left_warning * 100]
+			set chance [rand 100]
+			putlog "diff = $diff, nearness = $nearness, chance = $chance"
+			if {$chance < $nearness} {
 				putserv "PRIVMSG $trivia_channel :[trivia_score_time_left] until the end of this game!"
 			}
+		}
 		}
 		trivia_check_rehash
 	}
@@ -1650,6 +1664,7 @@ proc trivia_score_get_time { } {
 	if {$trivia_score_time < [clock seconds]} {
 		set trivia_score_time [clock scan "next saturday"]
 	}
+	set trivia_score_time [expr $trivia_score_time - ( 5 * 3600)]
 	putloglev d * "setting next score rotation to [clock format $trivia_score_time]"
 }
 #>>>
