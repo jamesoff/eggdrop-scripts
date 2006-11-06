@@ -304,6 +304,13 @@ proc trivia_input { nick host handle channel arg } {
 		return 0
 	}
 
+	if [string match -nocase "!start" $arg] {
+		if {$trivia_status > 0} {
+			return
+		}
+		puthelp "PRIVMSG $trivia_channel :YOU'RE DOING IT WRONG"
+	}
+
 	if [regexp -nocase "^!t(rivia)?$" $arg] {
 		if {$trivia_status == 1} {
 			puthelp "PRIVMSG $trivia_channel :!trivia ... ?"
