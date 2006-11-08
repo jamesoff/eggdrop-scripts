@@ -1667,11 +1667,11 @@ proc trivia_score_get_time { } {
 #<<<
 	global trivia_score_time
 
-	set trivia_score_time [clock scan "saturday"]
+	set trivia_score_time [clock scan "friday 19:00"]
 	if {$trivia_score_time < [clock seconds]} {
-		set trivia_score_time [clock scan "next saturday"]
+		set trivia_score_time [clock scan "next friday 19:00"]
 	}
-	set trivia_score_time [expr $trivia_score_time - ( 5 * 3600)]
+	set trivia_score_time [expr $trivia_score_time]
 	putloglev d * "setting next score rotation to [clock format $trivia_score_time]"
 }
 #>>>
@@ -1776,6 +1776,7 @@ proc trivia_score_rot_timer { } {
 
 # handle end of week
 proc trivia_end_week { } {
+#<<<
 	global trivia_channel trivia_score_time
 
 	# set next week end
@@ -1783,6 +1784,7 @@ proc trivia_end_week { } {
 
 	# move scores around
 	trivia_score_winners
+#>>>
 }
 
 # Announce the time remaining
