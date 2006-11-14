@@ -65,6 +65,7 @@ set trivia_c(red) "\0034"
 set trivia_c(blue) "\0033"
 set trivia_c(purple) "\0036"
 set trivia_c(bold) "\002"
+set trivia_c(realblue) "\0032"
 #>>>
 
 bind pubm - * trivia_input
@@ -394,7 +395,7 @@ proc trivia_correct { nick } {
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
 	}	
-	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five2 $uid]"
+	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five3 $uid]"
 
 	set leader [trivia_leader]
 
@@ -466,7 +467,7 @@ proc trivia_get_run { row } {
 			return "is on a winning spree!"
 		}
 		4 {
-			puthelp "PRIVMSG $trivia_channel :$trivia_c(blue)QUAD DAMAGE!"
+			puthelp "PRIVMSG $trivia_channel :$trivia_c(realblue)QUAD DAMAGE!"
 			return "is on a roll ..."
 		}
 		5 {
@@ -1447,6 +1448,127 @@ proc trivia_near_five2 { uid } {
 }
 #>>>
 
+# Third function to get the nearest users to your score
+proc trivia_near_five3 { uid } {
+	global trivia_db_handle trivia_c
+
+	set sql "DROP TABLE IF EXISTS _score"
+	putlog $sql
+	trivia_db_handle eval $sql
+
+	set sql "CREATE TEMPORARY TABLE _score (user_id int, user_score int, last_score int)"
+	putlog $sql
+	trivia_db_handle eval $sql
+
+	set sql "INSERT INTO _score SELECT user_id, COUNT(dt), MAX(dt) AS user_score FROM scores GROUP BY scores.user_id"
+	putlog $sql
+	trivia_db_handle eval $sql
+
+	set outputlist [list]
+
+
+	# get our score
+	set sql "SELECT user_score, last_score FROM _score WHERE user_id = $uid"
+	set our_score ""
+	set our_last ""
+	trivia_db_handle eval $sql {
+		set our_score $user_score
+		set our_last $last_score
+	}
+
+	if {$our_score == ""} {
+		return ""
+	}
+
+	if {$last_score == ""} {
+		return ""
+	}
+
+	#find our position
+	#don't need to use last_score here because we must've just scored - making use the most recent point for this score
+	set sql "SELECT COUNT(*)+1 AS position FROM _score WHERE user_score > $our_score ORDER BY user_score DESC, last_score DESC"
+	putlog $sql
+	set position [trivia_db_handle onecolumn $sql]
+
+	putlog "our position is $position"
+
+
+	if {$position == 1} {
+		putlog "oh we're first"
+		#set output "$trivia_c(purple) $trivia_c(bold)"
+		#append output "1st: [trivia_get_username $uid] ($our_score)  $trivia_c(off)$trivia_c(bold)"
+		lappend outputlist [list $uid $our_score]
+	} else {
+		#find some users higher than us
+		set sql "SELECT * FROM _score WHERE user_score > $user_score ORDER BY user_score DESC, last_score DESC LIMIT 4"
+		putlog $sql
+
+		set prelist [list]
+
+		trivia_db_handle eval $sql {
+			lappend outputlist [list $user_id $user_score]
+		}
+
+		# finally, us
+		lappend outputlist [list $uid $our_score]
+	}
+
+	putlog "so far, output list is $outputlist"
+
+	# find two people below us
+	set sql "SELECT * FROM _score WHERE (user_score < $our_score) OR ((user_score = $our_score) AND (last_score < $our_last)) ORDER BY user_score DESC, last_score DESC LIMIT 5"
+	putlog $sql
+	set postlist [list]
+	trivia_db_handle eval $sql {
+		lappend postlist [list $user_id $user_score]
+	}
+
+	putlog "postlist is $postlist"
+
+	set pre_size 3
+	set post_size 2
+
+	if {$position == 1} {
+		set pre_size 1
+		set post_size 4
+	}
+
+	if {$position == 2} {
+		set pre_size 2
+		set post_size 3
+	}
+
+	if {[llength $postlist] == 0} {
+		set pre_size 5
+	}
+
+	if {$pre_size < [llength $outputlist]} {
+		set outputlist [lrange $outputlist end-$pre_size end]
+	}
+
+	set post_size [expr 5 - [llength $outputlist]]
+
+	if {$post_size > [llength $postlist]} {
+		set postlist [lrange $postlist 0 $post_size]
+	}
+
+	putlog "---"
+	putlog "pre: $outputlist"
+	putlog "post: $postlist"
+
+
+
+}
+
+proc trivia_get_username { uid } {
+	global trivia_db_handle
+
+	set sql "SELECT user_name FROM users WHERE user_id = $uid"
+	putlog $sql
+	return [trivia_db_handle onecolumn $sql]
+}
+
+
 # Get the current leader's UID
 proc trivia_leader { } {
 	global trivia_db_handle
@@ -1747,7 +1869,7 @@ proc trivia_time_to_words { time } {
 proc trivia_score_rot_timer { } {
 	global trivia_score_time trivia_channel trivia_c trivia_asking_question trivia_warned
 
-	putloglev 1 * "score_rot tick"
+	#putloglev 1 * "score_rot tick"
 	utimer 10 trivia_score_rot_timer
 
 	if {[clock seconds] > $trivia_score_time} {
@@ -1800,7 +1922,7 @@ trivia_connect
 trivia_score_get_time
 utimer 10 trivia_score_rot_timer
 
-putlog {TriviaEngine ENGAGED(*$£&($}
+putlog {TriviaEngine ENGAGED(*$Â£&($}
 
 if {$trivia_must_rehash == 2} {
   putlog "Auto-restarting trivia..."
