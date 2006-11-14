@@ -395,7 +395,7 @@ proc trivia_correct { nick } {
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
 	}	
-	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five3 $uid]"
+	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five2 $uid]"
 
 	set leader [trivia_leader]
 
