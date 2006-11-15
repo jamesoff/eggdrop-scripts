@@ -5,7 +5,7 @@
 package require sqlite
 
 # the channel to play in
-set trivia_channel "#triviacow"
+set trivia_channel "#molsoft"
 
 # the time between hints (sec)
 set trivia_speed 20
@@ -54,7 +54,7 @@ set trivia_timer ""
 set trivia_watchdog_timer ""
 set trivia_last_ts 0
 set trivia_score_time 0
-set trivia_debug_mode 0
+set trivia_debug_mode 1
 set trivia_warned 0
 set trivia_asking_question 0
 set trivia_current_leader -1
@@ -395,7 +395,7 @@ proc trivia_correct { nick } {
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
 	}	
-	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five2 $uid]"
+	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five3 $uid]"
 
 	set leader [trivia_leader]
 
@@ -1464,7 +1464,7 @@ proc trivia_near_five3 { uid } {
 	putlog $sql
 	trivia_db_handle eval $sql
 
-	set outputlist [list]
+	set outputlist ""
 
 
 	# get our score
@@ -1486,9 +1486,16 @@ proc trivia_near_five3 { uid } {
 
 	#find our position
 	#don't need to use last_score here because we must've just scored - making use the most recent point for this score
-	set sql "SELECT COUNT(*)+1 AS position FROM _score WHERE user_score > $our_score ORDER BY user_score DESC, last_score DESC"
+	set sql "SELECT user_id FROM _score WHERE user_score >= $our_score ORDER BY user_score DESC, last_score DESC"
 	putlog $sql
-	set position [trivia_db_handle onecolumn $sql]
+	set position 1
+	trivia_db_handle eval $sql {
+		if {$user_id != $uid} {
+			incr position
+		} else {
+			break
+		}
+	}
 
 	putlog "our position is $position"
 
@@ -1500,13 +1507,14 @@ proc trivia_near_five3 { uid } {
 		lappend outputlist [list $uid $our_score]
 	} else {
 		#find some users higher than us
-		set sql "SELECT * FROM _score WHERE user_score > $user_score ORDER BY user_score DESC, last_score DESC LIMIT 4"
+		set sql "SELECT * FROM _score WHERE user_score > $user_score ORDER BY user_score ASC, last_score ASC LIMIT 4"
 		putlog $sql
 
 		set prelist [list]
 
 		trivia_db_handle eval $sql {
-			lappend outputlist [list $user_id $user_score]
+			set outputlist [concat [list [list $user_id $user_score] ] $outputlist]
+			putlog "outputlist is now $outputlist"
 		}
 
 		# finally, us
@@ -1529,34 +1537,78 @@ proc trivia_near_five3 { uid } {
 	set post_size 2
 
 	if {$position == 1} {
+		putlog "we're in first"
 		set pre_size 1
 		set post_size 4
 	}
 
 	if {$position == 2} {
+		putlog "we're in 2nd"
 		set pre_size 2
 		set post_size 3
 	}
 
 	if {[llength $postlist] == 0} {
+		putlog "no postlist, using only prelist"
 		set pre_size 5
 	}
 
-	if {$pre_size < [llength $outputlist]} {
-		set outputlist [lrange $outputlist end-$pre_size end]
+	if {[llength $postlist] == 1} {
+		putlog "one postlist, using most prelist"
+		set pre_size 4
 	}
+
+	if {$pre_size < [llength $outputlist]} {
+		putlog "pre_size $pre_size < length of prelist, trimming"
+		set startpos [expr [llength $outputlist] - $pre_size]
+		set outputlist [lrange $outputlist $startpos end]
+	}
+
+	putlog "outputlist length is [llength $outputlist]"
 
 	set post_size [expr 5 - [llength $outputlist]]
 
-	if {$post_size > [llength $postlist]} {
-		set postlist [lrange $postlist 0 $post_size]
+	if {$post_size < [llength $postlist]} {
+		putlog "post_size calculated as $post_size and is less than list length"
+		set postlist [lrange $postlist 0 [expr $post_size - 1]]
 	}
 
 	putlog "---"
 	putlog "pre: $outputlist"
 	putlog "post: $postlist"
 
+	if {$position > 2} {
+		set initpos [expr $position - 2]
+	} else {
+		set initpos 1
+	}
 
+	putlog "first position on list is $initpos"
+
+	foreach place $postlist {
+		lappend outputlist $place
+	}
+
+	set output ""
+
+	foreach place $outputlist {
+		set entry ""
+		append entry "$initpos"
+		append entry [trivia_ordinal $initpos]
+		append entry ": "
+		append entry [trivia_get_username [lindex $place 0]]
+		append entry " ("
+		append entry [lindex $place 1]
+		append entry ")"
+		incr initpos
+		if {[lindex $place 0] == $uid} {
+			append output "$trivia_c(purple)$trivia_c(bold) $entry$trivia_c(off)$trivia_c(bold) "
+		} else {
+			append output " $entry "
+		}
+	}
+	
+	putlog $output
 
 }
 
