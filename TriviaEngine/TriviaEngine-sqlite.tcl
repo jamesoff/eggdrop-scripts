@@ -5,7 +5,7 @@
 package require sqlite
 
 # the channel to play in
-set trivia_channel "#molsoft"
+set trivia_channel "#triviacow"
 
 # the time between hints (sec)
 set trivia_speed 20
@@ -54,7 +54,7 @@ set trivia_timer ""
 set trivia_watchdog_timer ""
 set trivia_last_ts 0
 set trivia_score_time 0
-set trivia_debug_mode 1
+set trivia_debug_mode 0
 set trivia_warned 0
 set trivia_asking_question 0
 set trivia_current_leader -1
