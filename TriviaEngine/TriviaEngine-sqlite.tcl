@@ -1596,7 +1596,7 @@ proc trivia_near_five3 { uid } {
 		append entry "$initpos"
 		append entry [trivia_ordinal $initpos]
 		append entry ": "
-		append entry [trivia_get_username [lindex $place 0]]
+		append entry [trivia_question_inject [trivia_get_username [lindex $place 0]]]
 		append entry " ("
 		append entry [lindex $place 1]
 		append entry ")"
@@ -1609,6 +1609,7 @@ proc trivia_near_five3 { uid } {
 	}
 	
 	putlog $output
+	return $output
 
 }
 
