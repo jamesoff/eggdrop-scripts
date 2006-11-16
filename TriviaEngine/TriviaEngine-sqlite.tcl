@@ -33,7 +33,7 @@ set trivia_run_nick ""
 set trivia_guesser ""
 set trivia_guesser_count 0
 set trivia_last_qid 0
-
+set trivia_q_timestamp 0
 if [info exists trivia_must_rehash] {
   if {$trivia_must_rehash == 1} {
 	  set trivia_must_rehash 2
@@ -363,7 +363,7 @@ proc trivia_correct { nick } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status
 	global trivia_timer trivia_delay trivia_db_handle trivia_unanswered trivia_run_qty trivia_run_last trivia_run_nick trivia_c
-	global trivia_score_time trivia_time_left_warning trivia_asking_question trivia_current_leader
+	global trivia_score_time trivia_time_left_warning trivia_asking_question trivia_current_leader trivia_q_timestamp
 
 	if {$trivia_status != 1} {
 		#something strange going on
@@ -375,6 +375,15 @@ proc trivia_correct { nick } {
 	set trivia_q_answer ""
 	set newuser 0
 	set trivia_asking_question 0
+
+	set speed [expr [clock seconds] - $trivia_q_timestamp]
+
+	set speedword ""
+	if {$speed <= 1} {
+		set speedword [trivia_random_element [list "POW! 0 to correct in under a second!" "Faster than a speeding fast thing!" "Even I didn't get it that quick, and I've just got to do a database lookup!"]]
+	} elseif {$speed < 7} {
+		set speedword [trivia_random_element [list "WHOOSH! 0 to correct in $speed seconds!" "%% shows their unassailable knowledge of whatever that question was about by getting it in $speed seconds" "Set course for correctsville, Commander %%. Ahead warp [expr 10 - $speed]!" "Caffeine abuse pays off for %% with a speedy time of $speed seconds" "Faster than a speeding triviabullet!"]]
+	}
 
 	set uid [trivia_get_uid $nick]
 	if {$uid == 0} {
@@ -389,7 +398,12 @@ proc trivia_correct { nick } {
 
 	trivia_incr_score $uid
 
+	regsub -all -nocase "%%" $speedword "$trivia_c(purple)$nick$trivia_c(off)" speedword
+
 	putquick "PRIVMSG $trivia_channel :Congratulations $trivia_c(purple)$nick$trivia_c(off)! The answer was$trivia_c(purple) $answer$trivia_c(off)."
+	if {$speedword != ""} {
+		putquick "PRIVMSG $trivia_channel :$speedword"
+	}
 
 	trivia_bmotion_send "winner" "$nick $answer"
 	if {$newuser == 1} {
@@ -467,7 +481,7 @@ proc trivia_get_run { row } {
 			return "is on a winning spree!"
 		}
 		4 {
-			puthelp "PRIVMSG $trivia_channel :$trivia_c(realblue)QUAD DAMAGE!"
+			putquick "PRIVMSG $trivia_channel :$trivia_c(realblue)QUAD DAMAGE!"
 			return "is on a roll ..."
 		}
 		5 {
@@ -916,7 +930,7 @@ proc trivia_get_question { } {
 proc trivia_start_round { } {
 #<<<
 	global trivia_q_id trivia_q_cat trivia_q_question trivia_q_answer trivia_q_hint trivia_q_attempts trivia_channel trivia_status trivia_last_qid
-	global trivia_asking_question trivia_delay botnick
+	global trivia_asking_question trivia_delay botnick trivia_q_timestamp
 
 	if {$trivia_status != 1} {
 		#we're switched off, abort
@@ -950,6 +964,7 @@ proc trivia_start_round { } {
 	set trivia_asking_question 1
 
 	trivia_bmotion_send "start" "$trivia_channel $trivia_delay $botnick"
+	set trivia_q_timestamp [clock seconds]
 
 	trivia_round
 
@@ -987,17 +1002,17 @@ proc trivia_round { } {
 		set hint ""
 	}
 
-	putserv "PRIVMSG $trivia_channel :$trivia_c(red)--== Trivia ==--$trivia_c(off) \[category: \002$trivia_q_cat\002\]"
-	#\[question id: \002$trivia_q_id\002\]"
 	set split_question [trivia_question_split $trivia_q_question]
+
+	putquick "PRIVMSG $trivia_channel :$trivia_c(red)--== Trivia ==--$trivia_c(off) \[category: \002$trivia_q_cat\002\]"
 	foreach q $split_question {
 		if {$q != ""} {
-			putserv "PRIVMSG $trivia_channel :$trivia_c(blue) [trivia_question_inject $q]"
+			putquick "PRIVMSG $trivia_channel :$trivia_c(blue) [trivia_question_inject $q]"
 		}
 	}
 	#set new_question [trivia_question_inject $trivia_q_question]
-	#putserv "PRIVMSG $trivia_channel :$trivia_c(blue) $new_question"
-	putserv "PRIVMSG $trivia_channel :Hint$hint: [trivia_explode $trivia_q_hint]"
+	#putquick "PRIVMSG $trivia_channel :$trivia_c(blue) $new_question"
+	putquick "PRIVMSG $trivia_channel :Hint$hint: [trivia_explode $trivia_q_hint]"
 
 	incr trivia_q_attempts
 
