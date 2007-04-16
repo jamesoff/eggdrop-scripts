@@ -35,6 +35,12 @@ proc quote_connect { } {
 # CHANGE ME (use blank if you're not using the PHP script)
 set php_page "http://sakaki.jamesoff.net/~notopic/"
 
+# automatically spew "relevant" quotes?
+set quote_automatic 1
+
+# minimum number of seconds between automatic quotes
+set quote_automatic_minimum 7200
+
 # bind commands CHANGE as needed
 # use ".chanset #channel [+/-]quoteengine" to enable/disable individual
 # channels
@@ -51,6 +57,7 @@ bind pub "m|ov" !deletequote quote_delete
 bind pub "m|ov" !quotestats quote_stats
 bind pub "-|-" !quoteversion quote_version
 bind pub "-|-" !quotehelp quote_help
+bind pubm "-|ov" * quote_auto
 
 # a user with this flag(s) can't use the script at all
 set quote_noflags "Q|Q"
@@ -62,6 +69,7 @@ set quote_chanmax 5
 ### code starts here (no need to edit stuff below currently)
 #1.00
 set quote_version "cvs"
+set quote_auto_last(blah) 0
 
 #add setting to channel
 setudef flag quoteengine
@@ -234,7 +242,7 @@ proc quote_fetch { nick host handle channel text } {
 # !findquote [--all] [--channel #channel] [--count <int>] <text>
 #   Find all quotes with "text" in them. (in random order)
 #   The first 5 (by default) are listed in the channel. The rest are /msg'd to
-#   you up to the maxiumum (default 5).
+#   you up to the maximum (default 5).
 #     --all: Search all channels, not just current one
 #     --channel: Search given channel
 #     --count <int>: Find this many total quotes
@@ -501,6 +509,84 @@ proc quote_version { nick host handle channel text } {
   puthelp "PRIVMSG $nick :  (End of help)"
   return 0
 }
+
+proc quote_auto { nick host handle channel text } {
+	global quote_automatic
+	if {$quote_automatic == 0} {
+		return
+	}
+
+  if {![channel get $channel quoteengine]} {
+		return
+	}
+
+	global quote_auto_last db_handle
+	if [info exists quote_auto_last($channel)] {
+		set diff [expr [clock seconds] - $quote_auto_last($channel)]
+	} else {
+		set diff 3601
+		set quote_auto_last($channel) 0
+	}
+
+	if {$diff < 3600} {
+		return
+	}
+
+	set words [split $text]
+	set newwords [list]
+
+	foreach word $words {
+		if [regexp -nocase {^[a-z0-9']+$} $word] {
+			if {[lsearch [list "about" "their" "there"] $word] > -1} {
+				continue
+			}
+
+			if [onchan $word] {
+				continue
+			}
+
+			if {[string length $word] > 4} {
+				lappend newwords [mysqlescape $word]
+			}
+		}
+	}
+
+	if {[llength $newwords] == 0} {
+		return
+	}
+
+	putloglev d * "quoteengine: candidate words for random quote in $channel: $newwords"
+
+	if {![quote_ping]} {
+		return
+	}
+
+	set thisword [pickRandom $newwords]
+	putloglev d * "quoteengine: using $thisword"
+
+	if {[rand 100] < 95} {
+		putloglev d * "quoteengine: not random enough, ignoring"
+		return
+	}
+
+	
+	set where_clause "WHERE channel='[mysqlescape $channel]' AND quote LIKE '%$thisword%' ORDER BY RAND() LIMIT 1"
+	putloglev d * "quoteengine: $where_clause"
+	set sql "SELECT * FROM quotes $where_clause"
+
+	set result [mysqlquery $db_handle $sql]
+	if {[set row [mysqlnext $result]] != ""} {
+		set id [lindex $row 0]
+		set quote [lindex $row 3]
+
+		putlog "RANDOM QUOTE: $quote ($id)"
+		puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
+		set quote_auto_last($channel) [clock seconds]
+	}
+	mysqlendquery $result
+
+}
+
 
 quote_connect
 putlog "QuoteEngine $quote_version loaded"
