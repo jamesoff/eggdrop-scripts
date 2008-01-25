@@ -39,7 +39,7 @@ set php_page "http://sakaki.jamesoff.net/~notopic/"
 set quote_automatic 1
 
 # minimum number of seconds between automatic quotes
-set quote_automatic_minimum 7200
+set quote_automatic_minimum [expr 3 * 3600]
 
 # bind commands CHANGE as needed
 # use ".chanset #channel [+/-]quoteengine" to enable/disable individual
@@ -218,7 +218,10 @@ proc quote_fetch { nick host handle channel text } {
 
   if {[set row [mysqlnext $result]] != ""} {
     set id [lindex $row 0]
-    set quote [lindex $row 3]
+		set quote [lindex $row 3]
+		catch {
+			set quote [stripcodes bcruag $quote]
+		}
     set by [lindex $row 1]
     set when [clock format [lindex $row 5] -format "%Y/%m/%d %H:%M"]
     set chan [lindex $row 4]
@@ -520,15 +523,18 @@ proc quote_auto { nick host handle channel text } {
 		return
 	}
 
-	global quote_auto_last db_handle
+	global quote_auto_last db_handle quote_automatic_minimum
+
 	if [info exists quote_auto_last($channel)] {
 		set diff [expr [clock seconds] - $quote_auto_last($channel)]
+		putloglev 1 * "diff for $channel is $diff"
 	} else {
-		set diff 3601
+		set diff [expr $quote_automatic_minimum + 1]
+		putloglev d * "initialising diff for $channel"
 		set quote_auto_last($channel) 0
 	}
 
-	if {$diff < 3600} {
+	if {$diff < $quote_automatic_minimum} {
 		return
 	}
 
@@ -536,8 +542,8 @@ proc quote_auto { nick host handle channel text } {
 	set newwords [list]
 
 	foreach word $words {
-		if [regexp -nocase {^[a-z0-9']+$} $word] {
-			if {[lsearch [list "about" "their" "there"] $word] > -1} {
+		if [regexp -nocase {^[a-z0-9']{4,}$} $word] {
+			if {[lsearch [list "yeah" "about" "hello" "their" "there" "that's" "can't" "morning" "won't"] $word] > -1} {
 				continue
 			}
 
@@ -545,9 +551,7 @@ proc quote_auto { nick host handle channel text } {
 				continue
 			}
 
-			if {[string length $word] > 4} {
-				lappend newwords [mysqlescape $word]
-			}
+			lappend newwords [mysqlescape $word]
 		}
 	}
 
