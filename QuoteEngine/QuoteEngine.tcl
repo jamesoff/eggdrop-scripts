@@ -200,8 +200,10 @@ proc quote_fetch { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-  if {![regexp {[0-9]+} $text]} {
-    puthelp "PRIVMSG $channel: Use: !getquote <id>"
+	set verbose ""
+
+  if {![regexp {(-v )?([0-9]+)} $text matches verbose quote_id]} {
+    puthelp "PRIVMSG $channel: Use: !getquote \[-v\] <id>"
     return 0
   }
 
@@ -210,7 +212,8 @@ proc quote_fetch { nick host handle channel text } {
 		return 0
 	}
 
-	set text [mysqlescape $text]
+	
+	set text [mysqlescape $quote_id]
   set sql "SELECT * FROM quotes WHERE id='$text'"
   putloglev d * "QuoteEngine: executing $sql"
 
@@ -227,10 +230,14 @@ proc quote_fetch { nick host handle channel text } {
     set chan [lindex $row 4]
     if {$chan != $channel} {
       puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
-      puthelp "PRIVMSG $channel :\[\002$id\002\] From $chan, added $by at $when."
+      if {$verbose != ""} {
+				puthelp "PRIVMSG $channel :\[\002$id\002\] From $chan, by added $by at $when."
+			}
     } else {
       puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
-      puthelp "PRIVMSG $channel :\[\002$id\002\] Added $by at $when."
+			if {$verbose != ""} {
+				puthelp "PRIVMSG $channel :\[\002$id\002\] Added by $by at $when."
+			}
     }
   } else {
     puthelp "PRIVMSG $channel :Couldn't find quote $text"
@@ -503,7 +510,7 @@ proc quote_version { nick host handle channel text } {
   puthelp "PRIVMSG $nick :  !addquote <quote text> - adds a quote to the database"
   puthelp "PRIVMSG $nick :  !delquote <id> - deletes a quote. You must be either a bot/channel master or the person who added the quote to delete it."
   puthelp "PRIVMSG $nick :  !randquote \[--all\] \[--channel=#channel\] \[-c #channel\] - fetches a random quote from the current channel. --all chooses from all channels, not just the one the command is executed from. --channel and -c choose only from the given channel."
-  puthelp "PRIVMSG $nick :  !getquote <id> - fetches the quote with number <id>"
+  puthelp "PRIVMSG $nick :  !getquote \[-v\]<id> - fetches the quote with number <id>. Gives info of who added it if -v is specified."
   puthelp "PRIVMSG $nick :  !findquote \[--all\] \[--channel=#channel\] \[-c #channel\] \[--count <int>\] \[-n <int>\] <text> - finds up to <int> (default 5) quotes containing 'text'. Optional parameters same as !randquote. -n is a shortcut for --count."
   puthelp "PRIVMSG $nick :  !quoteurl - get the URL for the web interface to the quotes"
   puthelp "PRIVMSG $nick :  !quotestats - get some information"
