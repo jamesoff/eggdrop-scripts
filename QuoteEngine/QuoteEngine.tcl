@@ -66,6 +66,9 @@ set quote_noflags "Q|Q"
 # to /msg'ing the user
 set quote_chanmax 5
 
+# shrink multiple spaces to single spaces when fetching a quote?
+set quote_shrinkspaces 1
+
 ### code starts here (no need to edit stuff below currently)
 #1.00
 set quote_version "cvs"
@@ -145,7 +148,7 @@ proc quote_add { nick host handle channel text } {
 #     -c: Shortcut for --channel
 ################################################################################
 proc quote_rand { nick host handle channel text } {
-  global db_handle quote_noflags
+  global db_handle quote_noflags quote_shrinkspaces
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -177,6 +180,12 @@ proc quote_rand { nick host handle channel text } {
     set quote [lindex $row 3]
     set by [lindex $row 1]
     set when [clock format [lindex $row 5] -format "%Y/%m/%d %H:%M"]
+		catch {
+			if {$quote_shrinkspaces == 1} {
+				regsub -all "  +" $quote " " quote
+			}
+			set quote [stripcodes bcruag $quote]
+		}
 
     puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
   } else {
@@ -192,7 +201,7 @@ proc quote_rand { nick host handle channel text } {
 #   Fetches the given quote from the database
 ################################################################################
 proc quote_fetch { nick host handle channel text } {
-  global db_handle quote_noflags
+  global db_handle quote_noflags quote_shrinkspaces
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -223,6 +232,9 @@ proc quote_fetch { nick host handle channel text } {
     set id [lindex $row 0]
 		set quote [lindex $row 3]
 		catch {
+			if {$quote_shrinkspaces == 1} {
+				regsub -all "  +" $quote " " quote
+			}
 			set quote [stripcodes bcruag $quote]
 		}
     set by [lindex $row 1]
