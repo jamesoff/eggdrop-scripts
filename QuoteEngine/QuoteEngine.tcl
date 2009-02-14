@@ -533,7 +533,7 @@ proc quote_version { nick host handle channel text } {
 }
 
 proc quote_auto { nick host handle channel text } {
-	global quote_automatic
+	global quote_automatic quote_shrinkspaces
 	if {$quote_automatic == 0} {
 		return
 	}
@@ -601,6 +601,13 @@ proc quote_auto { nick host handle channel text } {
 	if {[set row [mysqlnext $result]] != ""} {
 		set id [lindex $row 0]
 		set quote [lindex $row 3]
+
+		catch {
+			if {$quote_shrinkspaces == 1} {
+				regsub -all "  +" $quote " " quote
+			}
+			set quote [stripcodes bcruag $quote]
+		}
 
 		putlog "RANDOM QUOTE: $quote ($id)"
 		puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
