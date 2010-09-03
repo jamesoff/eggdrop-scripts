@@ -353,6 +353,11 @@ proc quote_search { nick host handle channel text } {
         puthelp "${command}Plus $remaining other matches"
       }
     } else {
+			if {$count < $quote_chanmax} {
+				set command "PRIVMSG $channel :"
+			} else {
+				set command "PRIVMSG $nick :"
+			}
       if {$count == 1} {
         puthelp "${command}(All of 1 match)"
       } else {
