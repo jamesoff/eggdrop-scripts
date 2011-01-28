@@ -234,10 +234,10 @@ Sorted with most recent first.
       echo "</table>";
       echo "$count results<br>";
       if ($page > 0) {
-        echo "<a href=\"index.php?channel=$chan&filter=$filter&page=" . ($page - 1) . "\">&lt;&lt; Prev page</a>&nbsp;&nbsp";
+        echo "<a href=\"" . $_SERVER['PHP_SELF'] . "?channel=$chan&filter=$filter&page=" . ($page - 1) . "\">&lt;&lt; Prev page</a>&nbsp;&nbsp";
       }
       if (($counter + ($page * 100)) < $count) {
-        echo "<a href=\"index.php";
+        echo "<a href=\"" . $_SERVER['PHP_SELF'];
         echo "?channel=$chan";
         echo "&page=";
         echo ($page + 1);
