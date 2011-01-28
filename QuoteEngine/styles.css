@@ -1,0 +1,87 @@
+body {
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+tr.odd {
+	background-color: #DFDFDF;
+}
+
+tr.even {
+	background-color: white;
+}
+
+td.nick {
+	font-size: 10pt;
+}
+
+td.nick small {
+	font-size: 8pt;
+}
+
+td.time {
+	font-size: 10pt;
+}
+
+td.quote {
+	font-family: "Courier New";
+	font-size: 10pt;
+}
+
+
+h1 {
+	text-align: center;
+}
+
+#filter_form {
+	text-align: center;
+}
+
+#otherchans {
+	text-align: center;
+}
+
+#otherchans a {
+	color: black;
+	padding: 2px;
+}
+
+#otherchans a.current {
+	background-color: red;
+	color: white;
+}
+
+#otherchans a:hover {
+	color: white;
+	background-color: black;
+}
+
+#sortinfo {
+	text-align: right;
+	color: gray;
+}
+
+.nopage {
+	color: gray;
+}
+
+#pages {
+	padding-top: 2px;
+	text-align: center;
+	font-size: 12pt;
+
+}
+
+#pages a {
+	padding: 2px;
+	color: black;
+}
+
+#pages a:hover {
+	color: white;
+	background-color: red;
+}
+
+#poweredby {
+	text-align: right;
+	color: gray;
+}

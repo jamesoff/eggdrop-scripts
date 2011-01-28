@@ -1,0 +1,59 @@
+/* style sheet created by dubkat@dubkat.org  */
+
+body {
+	font-family: Arial, Helvetica, sans-serif;
+	background-color: #D1CE92;
+}
+h1 {
+	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	font-size: 30pt;
+	font-weight: bolder;
+	font-style: italic;
+}
+
+tr.odd {
+	background-color: #7FABD1;
+}
+
+tr.even {
+	background-color: #92D1AF;
+}
+
+td.nick {
+	font-weight: bold;
+	font-size: 12pt;
+}
+
+td.nick small {
+	font-weight: normal;
+	font-size: 10pt;
+}`
+
+td.time {
+	font-size: 10pt;
+}
+
+td.quote {
+	vertical-align: top;
+	font-family: Arial, Helvetica, Courier New;
+	font-size: 12pt;
+}
+
+div.singlequote {
+	margin: auto;
+	width: 50%;
+}
+
+div.singlequote .quote {
+	font-family: monospace;
+	background-color: white;
+	color: black;
+	border: 1px dashed #bbb;
+	padding: 4px;
+}
+
+div.singlequote .quote .meta {
+	font-family: sans-serif;
+	color: #aaa;
+	font-size: small;
+}
