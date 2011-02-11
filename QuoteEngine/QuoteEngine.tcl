@@ -9,39 +9,13 @@
 ###############################################################################
 
 # load the extension
-# CHANGE ME: My main bot's server has broken TCL, so I need the line below:
-#load /usr/local/lib/mysqltcl-2.12/libmysqltcl2.12.so
-#load /home/notopic/lib/mysqltcl-2.50/libmysqltcl2.50.so
-# BUT most people should get away with this if their server's setup right:
 package require mysqltcl
 
-# Use only one or other of the above!
+# Make sure you edit the sample settings file and save it as "QuoteEngine-settings.tcl"
+# in the eggdrop scripts directory!
+source "scripts/QuoteEngine-settings.tcl"
 
-# connect to database
-# CHANGE ME
-proc quote_connect { } {
-	global db_handle
-		
-	set db_handle [mysqlconnect -host localhost -user notopic -password moo -db quotes]
-
-	if {$db_handle != ""} {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-# url to site
-# CHANGE ME (use blank if you're not using the PHP script)
-set php_page "http://sakaki.jamesoff.net/~notopic/"
-
-# automatically spew "relevant" quotes?
-set quote_automatic 1
-
-# minimum number of seconds between automatic quotes
-set quote_automatic_minimum [expr 3 * 3600]
-
-# bind commands CHANGE as needed
+# bind commands CHANGE as needed to set who can use
 # use ".chanset #channel [+/-]quoteengine" to enable/disable individual
 # channels
 bind pub "m|fov" !addquote quote_add
@@ -59,25 +33,28 @@ bind pub "-|-" !quoteversion quote_version
 bind pub "-|-" !quotehelp quote_help
 bind pubm "-|ov" * quote_auto
 
-# a user with this flag(s) can't use the script at all
-set quote_noflags "Q|Q"
+################################################################################
+#No need to edit beyond this point
+################################################################################
 
-# maximum number of quotes to show in channel when searching before switching
-# to /msg'ing the user
-set quote_chanmax 5
-
-# shrink multiple spaces to single spaces when fetching a quote?
-set quote_shrinkspaces 1
-
-### code starts here (no need to edit stuff below currently)
-#1.00
-set quote_version "cvs"
+set quote_version "1.3"
 set quote_auto_last(blah) 0
 
 #add setting to channel
 setudef flag quoteengine
 
-### procedures start here
+# connect to database
+proc quote_connect { } {
+	global db_handle quote_db
+		
+	set db_handle [mysqlconnect -host $quote_db(host) -user $quote_db(user) -password $quote_db(password) -db $quote_db(database)]
+
+	if {$db_handle != ""} {
+		return 1
+	} else {
+		return 0
+	}
+}
 
 ################################################################################
 # quote_ping
@@ -274,7 +251,7 @@ proc quote_fetch { nick host handle channel text } {
 #   The script automatically puts %s around your text when searching.
 ################################################################################
 proc quote_search { nick host handle channel text } {
-  global db_handle php_page quote_noflags quote_chanmax
+  global db_handle quote_webpage quote_noflags quote_chanmax
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -347,8 +324,8 @@ proc quote_search { nick host handle channel text } {
 			}
 
       regsub "#" $channel "" chan
-      if {$php_page != ""} {
-        puthelp "${command}(Plus $remaining more matches: $php_page?filter=${text}&channel=${chan}&search=search)"
+      if {$quote_webpage != ""} {
+        puthelp "${command}(Plus $remaining more matches: $quote_webpage?filter=${text}&channel=${chan}&search=search)"
       } else {
         puthelp "${command}Plus $remaining other matches"
       }
@@ -376,7 +353,7 @@ proc quote_search { nick host handle channel text } {
 #   Gives the web of the web interface
 ################################################################################
 proc quote_url { nick host handle channel text } {
-  global php_page quote_noflags
+  global quote_webpage quote_noflags
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -384,9 +361,9 @@ proc quote_url { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-  if {$php_page != ""} {
+  if {$quote_webpage != ""} {
 # changed for better url by dubkat
-  puthelp "PRIVMSG $channel :${php_page}?channel=[string range $channel 1 end]"
+  puthelp "PRIVMSG $channel :${quote_webpage}?channel=[string range $channel 1 end]"
   } else {
     puthelp "PRIVMSG $channel :Not available."
   }
@@ -614,7 +591,7 @@ proc quote_auto { nick host handle channel text } {
 			set quote [stripcodes bcruag $quote]
 		}
 
-		putlog "RANDOM QUOTE: $quote ($id)"
+		putloglev d * "RANDOM QUOTE: $quote ($id)"
 		puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
 		set quote_auto_last($channel) [clock seconds]
 	}
