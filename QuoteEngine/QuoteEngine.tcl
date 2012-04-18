@@ -599,6 +599,12 @@ proc quote_auto { nick host handle channel text } {
 
 }
 
+# Define the pickRandom method which is used if bMotion isn't loaded
+if {[llength [info procs pickRandom]] == 0} {
+	proc pickRandom { list } {
+		return [lindex $list [rand [llength $list]]]
+	}
+}
 
 quote_connect
 putlog "QuoteEngine $quote_version loaded"
