@@ -93,6 +93,12 @@ proc quote_add { nick host handle channel text } {
 		return 0
 	}
 
+	set text [string trim $text]
+	if {$text == ""} {
+		putserv "PRIVMSG $nick :You forgot the quote text :("
+		return 0
+	}
+
   set sql "INSERT INTO quotes VALUES(null, "
   append sql "'$handle', "
   append sql "'$nick!$host', "
