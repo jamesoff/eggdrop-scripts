@@ -21,6 +21,8 @@
 		die("Unable to select database.");
 	}
 
+	@mysql_set_charset('utf8');
+
   if (isset($_GET['channel'])) {
 		$channel = $_GET['channel'];
 	}
@@ -67,6 +69,7 @@
 	}
 ?></title>
 		<link rel="stylesheet" type="text/css" href="<?php echo QUOTES_CSS; ?>">
+		<meta http-equiv="Content-type" content="text/html; charset=UTF-8">
 </head>
 
 <?php
