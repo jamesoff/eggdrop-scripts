@@ -46,12 +46,15 @@ setudef flag quoteengine
 # connect to database
 proc quote_connect { } {
 	global db_handle quote_db
+	putloglev d * "Entered quote_connect function"
 		
 	set db_handle [mysqlconnect -host $quote_db(host) -user $quote_db(user) -password $quote_db(password) -db $quote_db(database)]
 
 	if {$db_handle != ""} {
+		putloglev d * "Successfully connected"
 		return 1
 	} else {
+		putloglev d * "Connection failed"
 		return 0
 	}
 }
@@ -62,10 +65,13 @@ proc quote_connect { } {
 ################################################################################
 proc quote_ping { } {
 	global db_handle
+	putloglev d * "Entering quote_ping function"
 
 	if [::mysql::ping $db_handle] {
+		putloglev d * "Successful ping"
 		return 1
 	} else {
+		putloglev d * "Failed ping, attempting to connect"
 		return [quote_connect]
 	}
 }
@@ -383,12 +389,17 @@ proc quote_url { nick host handle channel text } {
 ################################################################################
 proc quote_stats { nick host handle channel text } {
   global db_handle quote_noflags
+	putloglev d * "Entering quote_stats function"
 
   if {![channel get $channel quoteengine]} {
+		putloglev d * "Dropping quote_stats command as it's disabled on $channel"
     return 0
   }
 
-  if [matchattr $handle $quote_noflags] { return 0 }
+  if [matchattr $handle $quote_noflags] { 
+		putloglev d * "$handle matched flags $quote_noflags"
+		return 0 
+	}
 
 	if {![quote_ping]} {
 		putquick "PRIVMSG $channel :Sorry, lost database connection :("
