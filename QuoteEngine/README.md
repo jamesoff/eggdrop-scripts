@@ -1,7 +1,3 @@
-QuoteEngine by JamesOff
-http://jamesoff.net
-
-
 Quick start, because I can't be arsed writing a full one ;)
 
 SQL setup
@@ -10,6 +6,7 @@ SQL setup
 1. Create a user and database in your mysql server for the bot to use
 2. Populate the database using the .sql script
 
+Note: Give the SQL user minimum permissions, restrict it to just the host the bot runs on, etc.
 
 TCL setup
 ---------
@@ -18,7 +15,7 @@ TCL setup
 2. Put the QuoteEngine.tcl file in your eggdrop's scripts/ directory
 3. Edit the QuoteEngine-settings.sample.tcl file and save it as
    QuoteEngine-settings.tcl in your scripts/ directory
-4. Put "source scripts/QuoteEngine.tcl" in your bot's config file
+4. Put `source scripts/QuoteEngine.tcl` in your bot's config file
 
 
 Webpage setup
