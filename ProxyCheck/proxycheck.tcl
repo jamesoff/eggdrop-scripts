@@ -1,6 +1,6 @@
 # open proxy checker for eggdrop
 # (c) James Seward 2003-6
-# version 1.11
+# version 1.12
 
 # http://www.jamesoff.net/site/projects/eggdrop-scripts/proxycheck
 # james@jamesoff.net
