@@ -103,7 +103,7 @@ proc proxycheck_check3 { ip host status nick orighost channel rbl } {
 
   if {$status} {
     if {$ip == $proxycheck_lastip} {
-      putlogdev d * "proxycheck: $host = $ip appears in RBL $ip, but I've already seen this one."
+      putloglev d * "proxycheck: $host = $ip appears in RBL $ip, but I've already seen this one."
       return 0
     }
     set proxycheck_lastip $ip
