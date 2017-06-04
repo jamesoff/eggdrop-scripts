@@ -17,10 +17,14 @@ TCL setup
    QuoteEngine-settings.tcl in your scripts/ directory
 4. Put `source scripts/QuoteEngine.tcl` in your bot's config file
 
-
 Webpage setup
 -------------
 
 1. Put the files in the www directory in the right place in your webserver
 2. Edit settings.sample.inc to have the right details, and rename to settings.inc
 3. Profit
+
+3rd Party webpages
+------------------
+
+* https://github.com/brandon15811/QuoteEngineWeb
