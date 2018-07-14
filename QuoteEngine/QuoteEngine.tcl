@@ -9,7 +9,7 @@
 ###############################################################################
 
 # load the extension
-package require mysqltcl
+package require sqlite3
 
 # Make sure you edit the sample settings file and save it as "QuoteEngine-settings.tcl"
 # in the eggdrop scripts directory!
@@ -37,7 +37,7 @@ bind pubm "-|ov" * quote_auto
 #No need to edit beyond this point
 ################################################################################
 
-set quote_version "1.3"
+set quote_version "2.0"
 set quote_auto_last(blah) 0
 
 #add setting to channel
@@ -45,29 +45,13 @@ setudef flag quoteengine
 
 # connect to database
 proc quote_connect { } {
-	global db_handle quote_db
-		
-	set db_handle [mysqlconnect -host $quote_db(host) -user $quote_db(user) -password $quote_db(password) -db $quote_db(database)]
+	global quote_db_handle quote_db_file
 
-	if {$db_handle != ""} {
-		return 1
-	} else {
-		return 0
-	}
+	sqlite3 quote_db_handle $quote_db_file
 }
 
-################################################################################
-# quote_ping
-# Check we're still connected to mysql
-################################################################################
-proc quote_ping { } {
-	global db_handle
-
-	if [::mysql::ping $db_handle] {
-		return 1
-	} else {
-		return [quote_connect]
-	}
+proc quote_escape { text } {
+    return [string map {' ''} $text]
 }
 
 ################################################################################
@@ -76,7 +60,7 @@ proc quote_ping { } {
 #   Adds a quote to the database
 ################################################################################
 proc quote_add { nick host handle channel text } {
-  global db_handle quote_noflags
+  global quote_noflags
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -88,36 +72,23 @@ proc quote_add { nick host handle channel text } {
     set handle $nick
   }
 
-	if {![quote_ping]} {
-		putquick "PRIVMSG $channel :Sorry, lost database connection :("
-		return 0
-	}
-
 	set text [string trim $text]
 	if {$text == ""} {
 		putserv "PRIVMSG $nick :You forgot the quote text :("
 		return 0
 	}
 
-  set sql "INSERT INTO quotes VALUES(null, "
-  append sql "'$handle', "
-  append sql "'$nick!$host', "
-  set text [mysqlescape $text]
-  append sql "'$text', "
-  append sql "'$channel', "
-  append sql "'[clock seconds]')"
+  set nickhost "$nick!$host"
+  set when [clock seconds]
 
+  set sql {INSERT INTO quotes VALUES(null, :handle, :nickhost, :text, :channel, :when)}
   putloglev d * "QuoteEngine: executing $sql"
 
-  set result [mysqlexec $db_handle $sql]
-  if {$result != 1} {
-    putlog "An error occurred with the sql :("
-  } else {
-    set id [mysqlinsertid $db_handle]
-    puthelp "PRIVMSG $channel :Quote \002$id\002 added"
-		if [regexp {[^]> ]\|[[<0-9(]} $text] {
-			puthelp "PRIVMSG $nick :It's possible you didn't split the lines quite right on the quote you just added. For best results, split lines in quotes using '|' with a space each side. To delete the quote you just added and fix it, do '!delquote $id' in the channel."
-		}
+  set result [quote_db_handle eval $sql]
+  set id [quote_db_handle last_insert_rowid]
+  puthelp "PRIVMSG $channel :Quote \002$id\002 added"
+  if [regexp {[^]> ]\|[[<0-9(]} $text] {
+      puthelp "PRIVMSG $nick :It's possible you didn't split the lines quite right on the quote you just added. For best results, split lines in quotes using '|' with a space each side. To delete the quote you just added and fix it, do '!delquote $id' in the channel."
   }
 }
 
@@ -131,7 +102,7 @@ proc quote_add { nick host handle channel text } {
 #     -c: Shortcut for --channel
 ################################################################################
 proc quote_rand { nick host handle channel text } {
-  global db_handle quote_noflags quote_shrinkspaces
+  global quote_noflags quote_shrinkspaces
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -139,30 +110,23 @@ proc quote_rand { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-	if {![quote_ping]} {
-		putquick "PRIVMSG $channel :Sorry, lost database connection :("
-		return 0
-	}
-
   set where_clause "WHERE channel='$channel'"
   if [regexp -- "--?all" $text] {
     set where_clause ""
   }
 
   if [regexp -- "--?c(hannel)?( |=)(.+)" $text matches skip1 skip2 newchan] {
-    set where_clause "WHERE channel='[mysqlescape $newchan]'"
+    set where_clause "WHERE channel='[quote_escape $newchan]'"
   }
 
-  set sql "SELECT * FROM quotes $where_clause ORDER BY RAND() LIMIT 1"
+  set sql "SELECT * FROM quotes $where_clause ORDER BY RANDOM() LIMIT 1"
   putloglev d * "QuoteEngine: executing $sql"
 
-  set result [mysqlquery $db_handle $sql]
-
-  if {[set row [mysqlnext $result]] != ""} {
-    set id [lindex $row 0]
-    set quote [lindex $row 3]
-    set by [lindex $row 1]
-    set when [clock format [lindex $row 5] -format "%Y/%m/%d %H:%M"]
+  quote_db_handle eval $sql result {
+    set id $result(id)
+    set quote $result(quote)
+    set by $result(nick)
+    set when [clock format $result(timestamp) -format "%Y/%m/%d %H:%M"]
 		catch {
 			if {$quote_shrinkspaces == 1} {
 				regsub -all "  +" $quote " " quote
@@ -171,10 +135,7 @@ proc quote_rand { nick host handle channel text } {
 		}
 
     puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
-  } else {
-    puthelp "PRIVMSG $channel :Couldn't find a quote :("
   }
-  mysqlendquery $result
 }
 
 
@@ -184,7 +145,7 @@ proc quote_rand { nick host handle channel text } {
 #   Fetches the given quote from the database
 ################################################################################
 proc quote_fetch { nick host handle channel text } {
-  global db_handle quote_noflags quote_shrinkspaces
+  global quote_db_handle quote_noflags quote_shrinkspaces
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -199,30 +160,23 @@ proc quote_fetch { nick host handle channel text } {
     return 0
   }
 
-	if {![quote_ping]} {
-		putquick "PRIVMSG $channel :Sorry, lost database connection :("
-		return 0
-	}
 
-	
-	set text [mysqlescape $quote_id]
-  set sql "SELECT * FROM quotes WHERE id='$text'"
+  set sql "SELECT * FROM quotes WHERE id=:quote_id"
   putloglev d * "QuoteEngine: executing $sql"
+  set found 0
 
-  set result [mysqlquery $db_handle $sql]
-
-  if {[set row [mysqlnext $result]] != ""} {
-    set id [lindex $row 0]
-		set quote [lindex $row 3]
+  quote_db_handle eval $sql result {
+    set id $result(id)
+		set quote $result(quote)
 		catch {
 			if {$quote_shrinkspaces == 1} {
 				regsub -all "  +" $quote " " quote
 			}
 			set quote [stripcodes bcruag $quote]
 		}
-    set by [lindex $row 1]
-    set when [clock format [lindex $row 5] -format "%Y/%m/%d %H:%M"]
-    set chan [lindex $row 4]
+    set by $result(nick)
+    set when [clock format $result(timestamp) -format "%Y/%m/%d %H:%M"]
+    set chan $result(channel)
     if {$chan != $channel} {
       puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
       if {$verbose != ""} {
@@ -234,11 +188,12 @@ proc quote_fetch { nick host handle channel text } {
 				puthelp "PRIVMSG $channel :\[\002$id\002\] Added by $by at $when."
 			}
     }
-  } else {
-    puthelp "PRIVMSG $channel :Couldn't find quote $text"
+    set found 1
   }
 
-  mysqlendquery $result
+  if {!$found} {
+    puthelp "PRIVMSG $channel :Couldn't find quote $text"
+  }
 }
 
 
@@ -257,7 +212,7 @@ proc quote_fetch { nick host handle channel text } {
 #   The script automatically puts %s around your text when searching.
 ################################################################################
 proc quote_search { nick host handle channel text } {
-  global db_handle quote_webpage quote_noflags quote_chanmax
+  global quote_webpage quote_noflags quote_chanmax
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -270,43 +225,45 @@ proc quote_search { nick host handle channel text } {
     return 0
   }
 
-	if {![quote_ping]} {
-		putquick "PRIVMSG $channel :Sorry, lost database connection :("
-		return 0
-	}
-
-  set where_clause "AND channel='[mysqlescape $channel]'"
+  set where_clause "AND channel=:channel"
   if [regexp -- "--?all " $text matches skip1] {
     set where_clause ""
     regsub -- $matches $text "" text
   }
 
   if [regexp -- {--?c(hannel)?( |=)([^ ]+)} $text matches skip1 skip2 newchan] {
-    set where_clause "AND channel='[mysqlescape $newchan]'"
+    set where_clause "AND channel=:newchan"
     regsub -- $matches $text "" text
   }
 
   set limit 5
   if [regexp -- {--?count( |=)([^ ]+)} $text matches skip1 count] {
-    set limit [mysqlescape $count]
+    set limit [quote_escape $count]
     regsub -- $matches $text "" text
   }
 
   if [regexp -- {-n( )?([^ ]+)} $text matches skip1 count] {
-    set limit [mysqlescape $count]
+    set limit [quote_escape $count]
     regsub -- $matches $text "" text
   }
 
-  set sql "SELECT * FROM quotes WHERE quote LIKE '%[mysqlescape $text]%' $where_clause ORDER BY RAND()"
+  set sql "SELECT * FROM quotes WHERE quote LIKE '%[quote_escape $text]%' $where_clause ORDER BY RANDOM()"
 
   putloglev d * "QuoteEngine: executing $sql"
 
-  if {[mysqlsel $db_handle $sql] > 0} {
+  set overflow 0
+  set count 0
+  quote_db_handle eval $sql result {
+      set id $result(id)
+      set qnick $result(nick)
+      set qhost $result(host)
+      set quote $result(quote)
+      set qchannel $result(channel)
+      set qts $result(timestamp)
 
-    set count 0
-    mysqlmap $db_handle {id qnick qhost quote qchannel qts} {
-      if {$count == $limit} {
-        break
+      if {$count >= $limit} {
+        incr overflow 1
+        continue
       }
 
       if {$count == $quote_chanmax} {
@@ -321,35 +278,30 @@ proc quote_search { nick host handle channel text } {
       incr count
     }
 
-    set remaining [mysqlresult $db_handle rows?]
-    if {$remaining > 0} {
-			if {$count < $quote_chanmax} {
-				set command "PRIVMSG $channel :"
-			} else {
-				set command "PRIVMSG $nick :"
-			}
+    if {$overflow > 0} {
+        if {$count < $quote_chanmax} {
+            set command "PRIVMSG $channel :"
+        } else {
+            set command "PRIVMSG $nick :"
+        }
 
-      regsub "#" $channel "" chan
-      if {$quote_webpage != ""} {
-        puthelp "${command}(Plus $remaining more matches: $quote_webpage?filter=${text}&channel=${chan}&search=search)"
-      } else {
-        puthelp "${command}Plus $remaining other matches"
-      }
+        regsub "#" $channel "" chan
+        puthelp "${command}Plus $overflow other matches"
     } else {
-			if {$count < $quote_chanmax} {
-				set command "PRIVMSG $channel :"
-			} else {
-				set command "PRIVMSG $nick :"
-			}
-      if {$count == 1} {
-        puthelp "${command}(All of 1 match)"
-      } else {
-        puthelp "${command}(All of $count matches)"
-      }
+        if {$count < $quote_chanmax} {
+            set command "PRIVMSG $channel :"
+        } else {
+            set command "PRIVMSG $nick :"
+        }
+        if {$count == 1} {
+            puthelp "${command}(All of 1 match)"
+        } else {
+            puthelp "${command}(All of $count matches)"
+        }
     }
-  } else {
-    puthelp "PRIVMSG $channel :No matches"
-  }
+    if {$count == 0} {
+        puthelp "PRIVMSG $channel :No matches"
+    }
 }
 
 
@@ -357,6 +309,8 @@ proc quote_search { nick host handle channel text } {
 # quote_url
 # !quoteurl
 #   Gives the web of the web interface
+#   Removed in 2.0 with switch to sqlite; i'm not supporting the web interface
+#   now
 ################################################################################
 proc quote_url { nick host handle channel text } {
   global quote_webpage quote_noflags
@@ -367,12 +321,7 @@ proc quote_url { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-  if {$quote_webpage != ""} {
-# changed for better url by dubkat
-  puthelp "PRIVMSG $channel :${quote_webpage}?channel=[string range $channel 1 end]"
-  } else {
-    puthelp "PRIVMSG $channel :Not available."
-  }
+  puthelp "PRIVMSG $channel :Not available."
 }
 
 
@@ -382,7 +331,7 @@ proc quote_url { nick host handle channel text } {
 #   Give some simple statistics about the db, channel, and user
 ################################################################################
 proc quote_stats { nick host handle channel text } {
-  global db_handle quote_noflags
+  global quote_db_handle quote_noflags
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -390,45 +339,23 @@ proc quote_stats { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-	if {![quote_ping]} {
-		putquick "PRIVMSG $channel :Sorry, lost database connection :("
-		return 0
-	}
-
   set sql "SELECT COUNT(*) AS total FROM quotes WHERE channel='$channel'"
   putloglev d * "QuoteEngine: executing $sql"
 
-  set result [mysqlquery $db_handle $sql]
   set total 0
   set chan 0
-
-  if {[set row [mysqlnext $result]] != ""} {
-    set total [lindex $row 0]
-  }
-
-  mysqlendquery $result
+  set by_handle 0
+  set total [quote_db_handle onecolumn $sql]
 
   set sql "SELECT COUNT(*) AS total FROM quotes"
   putloglev d * "QuoteEngine: executing $sql"
 
-  set result [mysqlquery $db_handle $sql]
-
-  if {[set row [mysqlnext $result]] != ""} {
-    set chan [lindex $row 0]
-  }
-
-  mysqlendquery $result
+  set chan [quote_db_handle onecolumn $sql]
 
   set sql "SELECT COUNT(*) AS total FROM quotes WHERE nick='$handle' AND channel='$channel'"
   putloglev d * "QuoteEngine: executing $sql"
 
-  set result [mysqlquery $db_handle $sql]
-
-  if {[set row [mysqlnext $result]] != ""} {
-    set by_handle [lindex $row 0]
-  }
-
-  mysqlendquery $result
+  set by_handle [quote_db_handle onecolumn $sql]
 
   puthelp "PRIVMSG $channel :Quotes for $channel: \002$total\002 (total: $chan). You have added \002$by_handle\002 quotes in this channel."
 }
@@ -441,7 +368,7 @@ proc quote_stats { nick host handle channel text } {
 #   are a bot/channel master, or if you're the person who added it.
 ################################################################################
 proc quote_delete  { nick host handle channel text } {
-  global db_handle quote_noflags
+  global quote_db_handle quote_noflags
 
   if {![channel get $channel quoteengine]} {
     return 0
@@ -449,19 +376,12 @@ proc quote_delete  { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-	if {![quote_ping]} {
-		putquick "PRIVMSG $channel :Sorry, lost database connection :("
-		return 0
-	}
-
-  set text [mysqlescape $text]
+  set text [quote_escape $text]
   if {![matchattr $handle m|m $channel]} {
     set sql "SELECT nick FROM quotes WHERE id='$text'"
     putloglev d * "QuoteEngine: executing $sql"
 
-    set result [mysqlquery $db_handle $sql]
-    set owner [lindex [mysqlnext $result] 0]
-    mysqlendquery $result
+    set owner [quote_db_handle onecolume $sql]
     if {$owner != $handle} {
       puthelp "NOTICE $nick :You cannot delete that quote."
       return 0
@@ -471,13 +391,8 @@ proc quote_delete  { nick host handle channel text } {
   set sql "DELETE FROM quotes WHERE id='$text'"
   putloglev d * "QuoteEngine: executing $sql"
 
-  set result [mysqlexec $db_handle $sql]
-  if {$result != 1} {
-    puthelp "PRIVMSG $channel :An error occurred deleting the quote :("
-    return 0
-  } else {
-    puthelp "PRIVMSG $channel :Deleted quote $text"
-  }
+  quote_db_handle eval $sql
+  puthelp "PRIVMSG $channel :Deleted quote $text"
 }
 
 
@@ -491,7 +406,7 @@ proc quote_version { nick host handle channel text } {
 
   if [matchattr $handle $quote_noflags] { return 0 }
 
-  puthelp "PRIVMSG $channel :This is the QuoteEngine version $quote_version by JamesOff (http://www.jamesoff.net/go/quoteengine)"
+  puthelp "PRIVMSG $channel :This is the QuoteEngine version $quote_version by JamesOff (https://github.com/jamesoff/eggdrop-scripts)"
   return 0
 }
 
@@ -512,7 +427,6 @@ proc quote_version { nick host handle channel text } {
   puthelp "PRIVMSG $nick :  !randquote \[--all\] \[--channel=#channel\] \[-c #channel\] - fetches a random quote from the current channel. --all chooses from all channels, not just the one the command is executed from. --channel and -c choose only from the given channel."
   puthelp "PRIVMSG $nick :  !getquote \[-v\]<id> - fetches the quote with number <id>. Gives info of who added it if -v is specified."
   puthelp "PRIVMSG $nick :  !findquote \[--all\] \[--channel=#channel\] \[-c #channel\] \[--count <int>\] \[-n <int>\] <text> - finds up to <int> (default 5) quotes containing 'text'. Optional parameters same as !randquote. -n is a shortcut for --count."
-  puthelp "PRIVMSG $nick :  !quoteurl - get the URL for the web interface to the quotes"
   puthelp "PRIVMSG $nick :  !quotestats - get some information"
   puthelp "PRIVMSG $nick :  !quoteversion - get the version of the script"
   puthelp "PRIVMSG $nick :  Some commands have synonyms: !deletequote, !fetchquote, !urlquote, and !searchquote."
@@ -530,7 +444,7 @@ proc quote_auto { nick host handle channel text } {
 		return
 	}
 
-	global quote_auto_last db_handle quote_automatic_minimum
+	global quote_auto_last quote_db_handle quote_automatic_minimum
 
 	if [info exists quote_auto_last($channel)] {
 		set diff [expr [clock seconds] - $quote_auto_last($channel)]
@@ -558,7 +472,7 @@ proc quote_auto { nick host handle channel text } {
 				continue
 			}
 
-			lappend newwords [mysqlescape $word]
+			lappend newwords [quote_escape $word]
 		}
 	}
 
@@ -568,10 +482,6 @@ proc quote_auto { nick host handle channel text } {
 
 	putloglev d * "quoteengine: candidate words for random quote in $channel: $newwords"
 
-	if {![quote_ping]} {
-		return
-	}
-
 	set thisword [pickRandom $newwords]
 	putloglev d * "quoteengine: using $thisword"
 
@@ -580,15 +490,14 @@ proc quote_auto { nick host handle channel text } {
 		return
 	}
 
-	
-	set where_clause "WHERE channel='[mysqlescape $channel]' AND quote LIKE '%$thisword%' ORDER BY RAND() LIMIT 1"
-	putloglev d * "quoteengine: $where_clause"
-	set sql "SELECT * FROM quotes $where_clause"
 
-	set result [mysqlquery $db_handle $sql]
-	if {[set row [mysqlnext $result]] != ""} {
-		set id [lindex $row 0]
-		set quote [lindex $row 3]
+	set where_clause "WHERE channel='[quote_escape $channel]' AND quote LIKE '%$thisword%' ORDER BY RANDOM() LIMIT 1"
+	putloglev d * "quoteengine: $where_clause"
+	set sql "SELECT id,quote FROM quotes $where_clause"
+
+	quote_db_handle eval $sql result {
+		set id $result(id)
+		set quote $result(quote)
 
 		catch {
 			if {$quote_shrinkspaces == 1} {
@@ -601,8 +510,6 @@ proc quote_auto { nick host handle channel text } {
 		puthelp "PRIVMSG $channel :\[\002$id\002\] $quote"
 		set quote_auto_last($channel) [clock seconds]
 	}
-	mysqlendquery $result
-
 }
 
 # Define the pickRandom method which is used if bMotion isn't loaded
