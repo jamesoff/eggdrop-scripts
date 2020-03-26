@@ -20,21 +20,21 @@ Database setup, first steps
    // In case you have an admin user for your mysql server other than the "root" user, you can skip this. //
 
    With root user enter the following command in your shell:
-   # mysql -u root
+   ```# mysql -u root```
       This will let you to login to mysql, so you can make changes on/in it.
  
    Create a new admin user (so you can login to phpmyadmin later on):
-   mysql> CREATE USER '<user>'@'%' IDENTIFIED BY '<pwhere>';
+   ```mysql> CREATE USER '<user>'@'%' IDENTIFIED BY '<pwhere>';```
       This will create the <user> with the given password.
       
    Grant all right to the user:
-   mysql> GRANT ALL PRIVILEGES ON *.* TO '<user>'@'%' WITH GRANT OPTION;
+   ```mysql> GRANT ALL PRIVILEGES ON *.* TO '<user>'@'%' WITH GRANT OPTION;```
       This command allows you to login from any host/ip and gives you unlimited control over all databases.
    
    Check if you did everything well, so the user exists:
-   mysql> SHOW GRANTS FOR '<user>'@'%';
+   ```mysql> SHOW GRANTS FOR '<user>'@'%';```
    
-   mysql> exit
+   ```mysql> exit```
       This will exit you out from the mysql console.
    
 2. Create a user and database in your mysql server for the bot to use.
@@ -48,19 +48,19 @@ Database setup, first steps
    b, Use the following commands:
    
    With your shell user, login to mysql with the previously created user:
-   $ mysql -u <user> -p
+  ```$ mysql -u <user> -p```
       Here you will need to enter the password which you have given previous (<pwhere>).
    
-   mysql> CREATE DATABASE quotesdb;
+   ```mysql> CREATE DATABASE quotesdb;```
       This will create a database, named "quotesdb".
    
    Now we need to create an other user for the bot.
-   mysql> CREATE USER '<botnick>'@'localhost' IDENTIFIED BY '<botpwhere>';
+   ```mysql> CREATE USER '<botnick>'@'localhost' IDENTIFIED BY '<botpwhere>';```
       This will create a user named "botnick". We will use this user,
       to connect to mysql and make changes in database named "quotesdb".
       For that, we need to set rights.
       
-   mysql> GRANT ALL PRIVILEGES ON quotesdb.* TO '<botnick>'@'localhost';
+   ```mysql> GRANT ALL PRIVILEGES ON quotesdb.* TO '<botnick>'@'localhost';```
       This will grant all right on db "quotesdb" to "botnick" user, connecting from localhost.
     
     
@@ -70,7 +70,7 @@ Database setup, first steps
 2. Now, you have to create the tables into the database which you made.
    For this, you can download the pre-made script - you can find it in the sql folder, named "quotes.sql".
    Download it (example: wget) and run the following command with your shell user:
-      $ mysql -u <user> -p quotesdb < quotes.sql
+      ```$ mysql -u <user> -p quotesdb < quotes.sql```
          The <user> is what you have created at point 1. :)
 
 
@@ -84,11 +84,10 @@ Setting up the tcl script, edit the config(s)
 2. Download the settings file (QuoteEngine-settings.sample.tcl) rename it to "QuoteEngine-settings.tcl" and edit it!
    The settings file needs to be edited. If you followed the guide, you won't have any problems to fill it out. :)
 3. Open your bot's configuraton file and put the following like to the end of the file:
-      'source "scripts/QuoteEngine.tcl"'
-   (Obviously without the '' signs. :))
+      ```source "scripts/QuoteEngine.tcl"```
 4. Telnet to your bot (or use dcc chat), or however you go to your bot's console and rehash your bot.
    You need to see this line in the console:
-      "QuoteEngine 1.3 loaded"
+      `"QuoteEngine 1.3 loaded"`
    In case you cannot see it, you did something wrong. Check again the guide. :) 
 
 
@@ -100,12 +99,13 @@ Usage
       .chanset <#channelname_here> +quoteengine
 2. If you did everything right, now you will be able to use commands as:
 
-
+```
 !addquote <text>        -- add a quote
 !getquote <#number>     -- get the quote of #
 !randquote              -- get a random quote
 !delquote <#number>     -- delete a quote
 !quotehelp              -- list of all available command
+```
 
 
 Note: some of the commands are limited bot owners, masters, etc.. Check QuoteEngine.tcl for further details.
