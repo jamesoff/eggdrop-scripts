@@ -4,14 +4,14 @@
 # your eggdrop's scripts/ directory
 
 # The mysql hostname to connect to
-set quote_db(host) "localhost"
+set quote_db(host) "127.0.0.1"
 
 # The mysql account to connect as
-set quote_db(user) "bot"
-set quote_db(password) "verysecret"
+set quote_db(user) "<botnick>"
+set quote_db(password) "<botpwhere>"
 
 # The name of the database to use
-set quote_db(database) "quotes"
+set quote_db(database) "quotesdb"
 
 # The URL of the webpage
 # If you're not using it, set this to ""
