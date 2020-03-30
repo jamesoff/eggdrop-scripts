@@ -10,6 +10,19 @@ Steps you need to do (or packages you should have) before downloading the script
    For example for ubuntu 18.04 these would be the packages: mysql-server, mysql-client, phpmyadmin
       <br>
       For phpmyadmin you need the following packages: apache2, php <- install those first. :)
+      <br>
+      Note: after finishing the things which you wanted to do in the database with phpmyadmin,
+      <br>
+      don't forget to disable it with command:
+      <br>
+      ```a2disconf phpmyadmin.conf```
+      <br>
+      so it won't be available until you need it again. In case you need it once more, you can enable phpmyadmin with command:
+      <br>
+      ```a2enconf phpmyadmin.conf```
+      <br>
+      Note: After module/conf enable/disable, you need to reload/restart apache2!
+      <br>
 3. Install eggdrop. Check out here: https://www.eggheads.org/downloads
 
 In case you have a running bot, you can continue.
@@ -17,6 +30,10 @@ In case you have a running bot, you can continue.
 
 Database setup, first steps
 ---------------------------------------------
+
+<br>
+!! Keep in mind, to give the minimum ammount of rights only, to database users!
+<br>
 
 1. Create admin user for mysql if you don't have it yet.
    
@@ -81,7 +98,7 @@ Database setup, first steps
       <br>
       For that, we need to set rights.
       
-   ```mysql> GRANT ALL PRIVILEGES ON quotesdb.* TO '<botnick>'@'localhost';```
+   ```mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON quotesdb.* TO '<botnick>'@'localhost';```
    <br>
       This will grant all right on db "quotesdb" to "botnick" user, connecting from localhost.
     
