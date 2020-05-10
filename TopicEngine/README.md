@@ -1,8 +1,11 @@
+TopicEngine
+===========
+
 The TopicEngine script allows advanced topic control in your IRC channel(s). It can be used to allow non-ops to change the topic, as well as offering useful ways for people who could otherwise change the topic directly to modify it.
 
-Consult the settings script for configuration instructions.
+Consult the settings script for configuration instructions. The script loads `TopicEngineSettings.tcl` and then tries `TopicEngineSettings_BOTNICK.tcl` too, so you can put bot-specific customisations in that file if you want.
 
-This script works fine, but can be quirky for features like prefix and postfix. I’m going to fix it, sometime :)
+This script works fine, but can be quirky for features like prefix and postfix.
 
 Full help is available online in the script (`/msg BOTNICK topic help`), but here’s an overview:
 

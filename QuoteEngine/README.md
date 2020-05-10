@@ -1,11 +1,16 @@
-**Hello!**
+QuoteEngine
+===========
 
+A quote database for Eggdrop bots.
 
-Steps you need to do (or packages you should have) before downloading the script:
+Prerequisites
+-------------
+
 1. Install all necessary packages for eggdrop to make use of mysql (also packages which you need to have are included).
-   <br>
-   For example for ubuntu 18.04 these would be the packages: tcl, tcl-dev, tcllib, tcl-tls, zlibc, zlib1g, tcl-trf, mysqltcl
-2. Install mysql-server and phpmyadmin (phpmyadmin is not really needed, but it helps to manage databases).
+
+   For example for ubuntu 18.04 these would be the packages `tcl, tcl-dev, tcllib, tcl-tls, zlibc, zlib1g, tcl-trf, mysqltcl`
+
+2. Install `mysql-server`. You may also want to install `phpmyadmin` and phpmyadmin (phpmyadmin is not really needed, but it helps to manage databases).
    <br>
    For example for ubuntu 18.04 these would be the packages: mysql-server, mysql-client, phpmyadmin
       <br>
