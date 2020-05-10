@@ -41,7 +41,7 @@ Database setup, first steps
 <br>
 
 1. Create admin user for mysql if you don't have it yet.
-   
+
    // In case you have an admin user for your mysql server other than the "root" user, you can skip this. //
 
    With root user enter the following command in your shell:
@@ -49,19 +49,19 @@ Database setup, first steps
    ```# mysql -u root```
       <br>
       This will let you to login to mysql, so you can make changes on/in it.
- 
+
    Create a new admin user (so you can login to phpmyadmin later on):
    <br>
    ```mysql> CREATE USER '<user>'@'%' IDENTIFIED BY '<pwhere>';```
       <br>
       This will create the <user> with the given password.
-      
+
    Grant all right to the user:
    <br>
    ```mysql> GRANT ALL PRIVILEGES ON *.* TO '<user>'@'%' WITH GRANT OPTION;```
       <br>
       This command allows you to login from any host/ip and gives you unlimited control over all databases.
-   
+
    Check if you did everything well, so the user exists:
    <br>
    ```mysql> SHOW GRANTS FOR '<user>'@'%';```
@@ -69,30 +69,30 @@ Database setup, first steps
    ```mysql> exit```
    <br>
       This will exit you out from the mysql console.
-   
+
 2. Create a user and database in your mysql server for the bot to use.
-   
+
    You have two options now:
    <br>
    <br>
    a, Use phpmyadmin, where you can log in with the user which you created in point one and there
       create a new database and a new user, then grant that user rights over the database ..
-   
+
    OR
-   
+
    b, Use the following commands:
-   
+
    With your shell user, login to mysql with the previously created user:
    <br>
    ```$ mysql -u <user> -p```
    <br>
       Here you will need to enter the password which you have given previous (`<pwhere>`).
    <br>
-   
+
    ```mysql> CREATE DATABASE quotesdb;```
    <br>
       This will create a database, named "quotesdb".
-   
+
    Now we need to create an other user for the bot.
    <br>
    ```mysql> CREATE USER '<botnick>'@'localhost' IDENTIFIED BY '<botpwhere>';```
@@ -102,15 +102,15 @@ Database setup, first steps
       to connect to mysql and make changes in database named "quotesdb".
       <br>
       For that, we need to set rights.
-      
+
    ```mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON quotesdb.* TO '<botnick>'@'localhost';```
    <br>
       This will grant all right on db "quotesdb" to "botnick" user, connecting from localhost.
-    
-    
+
+
    Now we are ready to move on to the next step. :)
-   
-   
+
+
 2. Now, you have to create the tables into the database which you made.
    <br>
    For this, you can download the pre-made script - you can find it in the sql folder, named "quotes.sql".
@@ -140,7 +140,7 @@ Setting up the tcl script, edit the config(s)
    <br>
       `"QuoteEngine 1.3 loaded"`
     <br>
-   In case you cannot see it, you did something wrong. Check again the guide. :) 
+   In case you cannot see it, you did something wrong. Check again the guide. :)
 
 
 Usage

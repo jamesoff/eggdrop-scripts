@@ -21,7 +21,7 @@
 	// The stylesheet to use
 	// styles.css or ocean.css
 	// Or your own, if you're super-clever
-	define("QUOTES_CSS", "styles.css"); 
+	define("QUOTES_CSS", "styles.css");
 
 	// Change 'false' to 'true' below!
 	define("SETTINGS_EDITED", false);

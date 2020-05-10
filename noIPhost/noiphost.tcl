@@ -10,15 +10,15 @@
 ## INSTRUCTIONS
 ###############################################################################
 
-# This script bans users joining your channel with non-resolving hosts. Bans 
-# last for a day. (Change the 1440 in the line near the end of the script to 
+# This script bans users joining your channel with non-resolving hosts. Bans
+# last for a day. (Change the 1440 in the line near the end of the script to
 # change this).
-# 
+#
 # Users who are +o, +v, or +f in your bot (local or global) are left alone.
-# 
+#
 # Enable the 'noiphosts' flag for channels you want to protect.
 # --> .chanset #somechannel +noiphosts
-# 
+#
 # Enable the debug level on the partyline for some debug output
 # --> .console +d (to enable)
 # --> .console -d (to disable)
@@ -41,7 +41,7 @@ proc bancheck_join { nick host handle channel } {
 	}
 
   putloglev d * "noiphosts: join by $host to $channel"
-  
+
   #don't apply to friends, voices, ops
 	if {[matchattr $handle +fov|+fov $channel]} {
     putloglev d * "noiphosts: $nick is a friend"

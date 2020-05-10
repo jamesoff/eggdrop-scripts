@@ -41,4 +41,3 @@ user_id bigint(20) not null default '0',
 dt bigint(2) not null default '0',
 score int not null default '0'
 );
-

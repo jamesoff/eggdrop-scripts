@@ -1,5 +1,5 @@
 # The trivia engine YAY
-# vim: foldmethod=marker:foldcolumn=2:foldmarker=<<<,>>>:sw=2:ts=2 
+# vim: foldmethod=marker:foldcolumn=2:foldmarker=<<<,>>>:sw=2:ts=2
 
 ### INIT <<<
 package require sqlite
@@ -91,7 +91,7 @@ set trivia_bmotion_bot "NoTopic"
 # Send a botnet command to the bmotion bot
 proc trivia_bmotion_send { command params } {
 	global trivia_bmotion_bot
-	
+
 	if {$trivia_bmotion_bot == ""} {
 		return 0
 	}
@@ -128,7 +128,7 @@ proc trivia_msg { nick host handle cmd } {
 			set category [trivia_sqlite_escape $category]
 			set sql "SELECT cat_id FROM categories WHERE cat_name='$category'"
 			set cat_id 0
-			
+
 			set cat_id [trivia_db_handle eval $sql]
 			if {$cat_id != ""} {
 				puthelp "PRIVMSG $nick :Moving question $trivia_last_qid to category$trivia_c(purple) $category$trivia_c(off) ($cat_id)"
@@ -178,7 +178,7 @@ proc trivia_msg { nick host handle cmd } {
 #<<< debug
 		if [regexp -nocase {^debug (.+)} $cmd matches func] {
 			global trivia_debug_mode
-			
+
 			if {$trivia_debug_mode == 0} {
 				putquick "PRIVMSG $nick :Debug mode is disabled. Cannot use debug commands."
 				return 0
@@ -243,7 +243,7 @@ proc trivia_msg { nick host handle cmd } {
 					trivia_db_handle eval $sql result {
 						set question_id $result(question_id)
 					}
-					
+
 					if {$question_id == 0} {
 						putserv "PRIVMSG $nick :I can't seem to find that report, sorry :("
 						return 0
@@ -408,7 +408,7 @@ proc trivia_correct { nick } {
 	trivia_bmotion_send "winner" "$nick $answer"
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
-	}	
+	}
 	putquick "PRIVMSG $trivia_channel :Rankings: [trivia_near_five3 $uid]"
 
 	set leader [trivia_leader]
@@ -914,7 +914,7 @@ proc trivia_get_question { } {
 
 		set trivia_q_question [string trim $trivia_q_question]
 		set trivia_q_answer [string trim $trivia_q_answer]
-	} 
+	}
 
 	if {$trivia_q_id == ""} {
 		return
@@ -1295,7 +1295,7 @@ proc trivia_get_rank { uid } {
 	set sql "SELECT user_id FROM users ORDER by user_score DESC"
 	set dt [trivia_get_period]
 	set sql "select user_id, count(dt) as d from scores where dt > $dt group by user_id order by d desc"
-	
+
 	set pos 0
 	trivia_db_handle eval $sql {
 		incr pos
@@ -1622,7 +1622,7 @@ proc trivia_near_five3 { uid } {
 			append output " $entry "
 		}
 	}
-	
+
 	putlog $output
 	return $output
 
@@ -1805,10 +1805,10 @@ proc trivia_score_winners { } {
 	set now [clock seconds]
 
 	set updates [list]
-	
+
 	#knock off a week
 	set cutoff [expr $now - 604800]
-	
+
 	set sql "SELECT user_id, COUNT(*) AS score FROM scores WHERE dt > $cutoff GROUP BY user_id ORDER BY score DESC LIMIT 5"
 	putloglev d * $sql
 
@@ -1825,7 +1825,7 @@ proc trivia_score_winners { } {
 			lappend winner_name [list $user_name [lindex $winner 0] [lindex $winner 1]]
 		}
 	}
-		
+
 	putlog $winners
 	putlog $winner_name
 
@@ -1880,7 +1880,7 @@ proc trivia_score_time_left { } {
 		putloglev d * [clock format $trivia_score_time]
 		return
 	}
-	
+
 	set diff [expr $trivia_score_time - $now]
 	putloglev d * "trivia_score_time_left: difference is $diff seconds"
 

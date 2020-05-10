@@ -46,7 +46,7 @@ setudef flag quoteengine
 # connect to database
 proc quote_connect { } {
 	global db_handle quote_db
-		
+
 	set db_handle [mysqlconnect -host $quote_db(host) -user $quote_db(user) -password $quote_db(password) -db $quote_db(database)]
 
 	if {$db_handle != ""} {
@@ -204,7 +204,7 @@ proc quote_fetch { nick host handle channel text } {
 		return 0
 	}
 
-	
+
 	set text [mysqlescape $quote_id]
   set sql "SELECT * FROM quotes WHERE id='$text'"
   putloglev d * "QuoteEngine: executing $sql"
@@ -580,7 +580,7 @@ proc quote_auto { nick host handle channel text } {
 		return
 	}
 
-	
+
 	set where_clause "WHERE channel='[mysqlescape $channel]' AND quote LIKE '%$thisword%' ORDER BY RAND() LIMIT 1"
 	putloglev d * "quoteengine: $where_clause"
 	set sql "SELECT * FROM quotes $where_clause"

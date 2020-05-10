@@ -210,7 +210,7 @@ proc trivia_correct { nick } {
 	putquick "PRIVMSG $trivia_channel :Congratulations $trivia_c(purple)$nick$trivia_c(off)! The answer was$trivia_c(purple) $answer$trivia_c(off)."
 	if {$newuser == 1} {
 	  putquick "PRIVMSG $trivia_channel :Welcome to our newest player,  $trivia_c(purple)$nick$trivia_c(off) :)"
-	}	
+	}
 	putquick "PRIVMSG $trivia_channel :rank0rs: [trivia_near_five2 $uid]"
 
 	#set score [trivia_get_score $uid]

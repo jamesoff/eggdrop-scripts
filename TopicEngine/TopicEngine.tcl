@@ -18,7 +18,7 @@
 #      Credit to : Dan Durrans, for coming up with the idea and feature list
 #                  #exeter and #ags people for testing it
 #
-# 
+#
 
 ###############################################################################
 # TopicEngine - a topic management TCL script for eggdrops
@@ -26,16 +26,16 @@
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or 
+# the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranty of 
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License 
-# along with this program; if not, write to the Free Software 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 ###############################################################################
 
@@ -126,14 +126,14 @@ proc topicInitArray { {loaded 0} } {
       #set topicInfo($chan,needVGlobal) 0
       #set topicInfo($chan,needOMode) 1
       #set topicInfo($chan,needVMode) 0
-      #set topicInfo($chan,Tflag) 1 
+      #set topicInfo($chan,Tflag) 1
       set topicInfo($chan,canFlags) "o|ov"
       set topicInfo($chan,canModes) "ov"
       set topicInfo($chan,cantFlags) "T"
       set topicInfo($chan,topicBits) [list]
       set topicInfo($chan,learnOnChange) 1
       set topicInfo($chan,initialised) "1"
-      
+
       #DO NOT CHANGE THESE
       set topicInfo($chan,topic) ""
       set topicInfo($chan,whoSet) [list]
@@ -145,9 +145,9 @@ proc topicInitArray { {loaded 0} } {
       if {$loaded == 0} {
         #sync the topics if we're online
         catch {
-          if {[lsearch $onChannels $chan] >= 0} { 
+          if {[lsearch $onChannels $chan] >= 0} {
             #putlog "Updating topic in $chan"
-            setTopic $chan 
+            setTopic $chan
           }
           set blah 0
         } err
@@ -160,14 +160,14 @@ proc topicInitArray { {loaded 0} } {
           #set topicInfo($chan,needVGlobal) 0
           #set topicInfo($chan,needOMode) 1
           #set topicInfo($chan,needVMode) 0
-          #set topicInfo($chan,Tflag) 1 
+          #set topicInfo($chan,Tflag) 1
           set topicInfo($chan,canFlags) "o|ov"
           set topicInfo($chan,canModes) "ov"
           set topicInfo($chan,cantFlags) "T"
           set topicInfo($chan,topicBits) [list]
           set topicInfo($chan,learnOnChange) 1
           set topicInfo($chan,initialised) "1"
-          
+
           #DO NOT CHANGE THESE
           set topicInfo($chan,topic) ""
           set topicInfo($chan,whoSet) [list]
@@ -191,7 +191,7 @@ proc topicInitArray { {loaded 0} } {
         #load a bot-specific file
         source "${topicConfigPath}/TopicEngineSettings_${botnet-nick}.tcl"
       }
-    }    
+    }
   }
 }
 
@@ -199,7 +199,7 @@ proc topicInitArray { {loaded 0} } {
 
 #####
 # checkTopic
-# 
+#
 # Tries out a new topic (=current topic | newbit)
 # returns 0 if it'll fit in the network topic length limit
 # else returns the number of characters over the limit
@@ -217,7 +217,7 @@ proc checkTopic {channel newbit {noOldTopic 0}} {
   }
 
   if {$newbit != ""} { lappend thisTopic $newbit }
-  
+
   if {$topicInfo($channel,leadIn) != ""} {
     set thisTopic [linsert $thisTopic 0 $topicInfo($channel,leadIn)]
   }
@@ -279,8 +279,8 @@ proc setTopic {channel {force 0}} {
     return 0
   }
 
-  set thisTopic $topicInfo($channel,topicBits)  
-  
+  set thisTopic $topicInfo($channel,topicBits)
+
   ##leadin and leadout
   if {$topicInfo($channel,leadIn) != ""} {
     putloglev 1 * "topicengine: adding prefix"
@@ -319,11 +319,11 @@ proc setTopic {channel {force 0}} {
 
   set topicInfo($channel,topic) $topicString
   if {([topic $channel] == $topicString) && ($force == 0)} { return 0 }
-  if {$force == -1} { 
+  if {$force == -1} {
     #just update the topic cache
-    return 0 
+    return 0
   }
-  
+
   putserv "TOPIC $channel :$topicString"
   set bufferDirty 0
   return 0
@@ -339,7 +339,7 @@ proc setTopic {channel {force 0}} {
 #
 proc topicChanged {nick host handle channel text} {
   global topicInfo topicChannels
-  
+
   #check the topic script is active in here
   if {![channel get $channel topicengine]} {
     return 0
@@ -362,8 +362,8 @@ proc topicChanged {nick host handle channel text} {
 
   #if it's a bot setting the topic, ignore it
   if [matchattr $handle b] { return 0 }
-  
-  if {[lindex $topicInfo($channel,lock) 0] == 0} { 
+
+  if {[lindex $topicInfo($channel,lock) 0] == 0} {
     #learn it?
     if {$topicInfo($channel,learnOnChange) == 1} {
       putlog "Topic in $channel changed, learning it"
@@ -371,7 +371,7 @@ proc topicChanged {nick host handle channel text} {
       backupTopic $channel
       topicParse $channel $text $nick
     }
-    return 0 
+    return 0
   }
 
   #it's locked, put it back and notify
@@ -410,7 +410,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
   set text [string trim $text]
 
   incr loops
-  if {$loops > 5} { 
+  if {$loops > 5} {
     set loops 0
     putlog "TopicEngine internal error: recursive looping. Aborting processing of this command."
     return 0
@@ -418,12 +418,12 @@ proc topicCommand {nick host handle channel text {silent 0} } {
 
   #this is because the array isn't initialised when the bot first starts
   topicInitArray 1
-  
+
   #these commands can be used by anyone
 ################# INFO
   if [regexp -nocase "^info ?(.+)?" $text boom param] {
     set loops 0
-    if {$param == ""} { 
+    if {$param == ""} {
       set updateTime [clock format $topicInfo($channel,whenLastSet)]
       if {[lindex $topicInfo($channel,lock) 0] != 0} {
         set whoLocked [lindex $topicInfo($channel,lock) 1]
@@ -527,7 +527,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
 
   #these commands need permissions
   set canTopic 0
-  
+
   #first we need to check global O and V
   #if {($topicInfo($channel,needOGlobal) == 1) && [matchattr $handle o]} { set canTopic 1 }
   #if {($topicInfo($channel,needVGlobal) == 1) && [matchattr $handle v]} { set canTopic 1 }
@@ -548,7 +548,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
   #if {($topicInfo($channel,Tflag) == 1) && [matchattr $handle -|T $channel]} { set canTopic 1 }
 
   #New system: using channel settings
-  
+
   # First we check canFlags, if the user has these eggdrop flags we'll allow use
   if [matchattr $handle $topicInfo($channel,canFlags) $channel] {
     putloglev d * "topicEngine: user $handle matches flags"
@@ -606,7 +606,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
       set bufferDirty 1
       set doBuffer 1
     }
-    
+
     global backupInfo
 
     if {$backupInfo($channel,topicBits) == ""} {
@@ -628,7 +628,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     } else {
       setTopic $channel -1
     }
-  
+
     return 1
   }
 
@@ -655,7 +655,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     #remove extra spaces
     set params [string trim $params]
     regsub -all "  +" $params " " params
-   
+
     #check length
     set tooMany [checkTopic $channel $params]
     if {$tooMany} {
@@ -701,7 +701,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     #remove extra spaces
     set params [string trim $params]
     regsub -all "  +" $params " " params
-   
+
     #check length
     set tooMany [checkTopic $channel $params]
     set originalTopicBits $topicInfo($channel,topicBits)
@@ -721,7 +721,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
         set topicInfo($channel,topicWhen) $originalTopicWhen
         return 2
       }
-      
+
       set tooMany [checkTopic $channel $params]
       incr count
       if {$count == 100} {
@@ -768,7 +768,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     #remove extra spaces
     set params [string trim $params]
     regsub -all "  +" $params " " params
-   
+
     #check length
     set tooMany [checkTopic $channel $params]
     set originalTopicBits $topicInfo($channel,topicBits)
@@ -789,7 +789,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
         set topicInfo($channel,topicWhen) $originalTopicWhen
         return 2
       }
-      
+
       set tooMany [checkTopic $channel $params]
       incr count
       if {$count == 100} {
@@ -831,7 +831,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
           topicNotice "Sorry, adding that to the topic would make it go over the length limit by $tooMany characters. Please try a shorter topic."
           return 1
         }
-        set topicInfo($channel,leadIn) $what      
+        set topicInfo($channel,leadIn) $what
         setTopic $channel
         return 1
       }
@@ -849,7 +849,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     }
 
     #else set the topic as is
-    if {$cmdString == "none"} { 
+    if {$cmdString == "none"} {
       set cmdString ""
     }
 
@@ -876,7 +876,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     #remove extra spaces
     set cmdString [string trim $cmdString]
     regsub -all "  +" $cmdString " " cmdString
-    
+
     backupTopic $channel
 
     set topicInfo($channel,whoSet) [list $nick]
@@ -1156,7 +1156,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     return 1
   }
 
-  
+
   ##If we got here, they used the command wrong
   # assume they meant set, and tell them how to get help
 
@@ -1167,7 +1167,7 @@ proc topicCommand {nick host handle channel text {silent 0} } {
     topicNotice "\[FYI\] For help on the !topic commands, please do \002/msg $botnick topic help\002."
     return 1
   }
-    
+
   #topicCommand $nick $host $handle $channel "set $text"
 
   global botnick
@@ -1315,7 +1315,7 @@ proc topicHelp {nick host handle arg} {
 #
 proc topicUnsplit {nick host handle channel} {
   global topicInfo topicChannels topicLastSplit topicSplitChans topicSplitDirty
-  
+
   #check the topic script is active in here
   if {![channel get $channel topicengine]} {
     return 0
@@ -1329,7 +1329,7 @@ proc topicUnsplit {nick host handle channel} {
 
 	putloglev d * "topicengine: last split time updated to $topicLastSplit ([clock format $topicLastSplit])"
 	putloglev d * "topicengine: dirty chans due to split: $topicSplitChans"
-  
+
   return 0
 }
 
@@ -1345,7 +1345,7 @@ proc topicJoin {nick host handle channel mode victim} {
 
   #only do this if I've joined a channel
   if [isbotnick $victim] {
-      
+
     #check the topic script is active in here
     if {![channel get $channel topicengine]} {
       return 0
@@ -1404,7 +1404,7 @@ proc topicParse {channel topic nick} {
 
   while {[string match "*$topicSeparator*" $topic]} {
     set sentence [string range $topic 0 [expr [string first $topicSeparator $topic] -1]]
-    if {$sentence != ""} { 
+    if {$sentence != ""} {
       if {$blah == 0} {
         set topicInfo($channel,topicBits) [list [string trim $sentence]]
         set topicInfo($channel,whoSet) [list $nick]
@@ -1418,7 +1418,7 @@ proc topicParse {channel topic nick} {
     }
     set topic [string range $topic [expr [string first $topicSeparator $topic] +1] end]
     incr loopCount
-    if {$loopCount > 10} { 
+    if {$loopCount > 10} {
       putlog "Couldn't get all of the topic"
       return 0
     }
@@ -1483,7 +1483,7 @@ proc topicBotCommand {fromBot cmd arg} {
 #
 # update the topic automagically at 00:01 every day
 #
-proc topicUpdate { min hour day month year } { 
+proc topicUpdate { min hour day month year } {
   global topicChannels
   putlog "topicEngine: auto-refreshing topics..."
 
@@ -1492,7 +1492,7 @@ proc topicUpdate { min hour day month year } {
   }
 
   return 0
-} 
+}
 
 #####
 # topicNotice
@@ -1594,7 +1594,7 @@ proc topicCommandDCC {handle idx args} {
 }
 
 #####
-# topicSplitCheck 
+# topicSplitCheck
 # handle splits intelligently
 #
 proc topicSplitCheck {hr min day month year} {
@@ -1606,7 +1606,7 @@ proc topicSplitCheck {hr min day month year} {
 
 	set splitDiff [expr [clock seconds] - $topicLastSplit]
 	putloglev 1 * "topicengine: checking for splits: diff between now and last split is $splitDiff sec"
-	
+
 	if {$splitDiff > 120} {
 		# redo topic in every chan
 		#don't do this is the setting is off

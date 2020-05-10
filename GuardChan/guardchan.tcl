@@ -1,7 +1,7 @@
 # GuardChan by JamesOff
 # Kickbans people if they're not in the bot's userfile
 # No other filtering options, sorry
-# 
+#
 # Released under the BSD licence
 # http://jamesoff.net/site/projects/eggdrop-scripts/guardchan
 
@@ -54,4 +54,3 @@ proc guardchan_join { nick host handle channel } {
     }
   }
 }
-

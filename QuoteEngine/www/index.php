@@ -40,7 +40,7 @@
 		$page = $_GET['page'];
 	}
 
-	
+
 	if (empty($channel)) {
 	  $channel = DEFAULT_CHAN;
   }
@@ -102,7 +102,7 @@ Filter for: <input type="text" name="filter" maxlength="32" size="32"> <input ty
   while ($chan = mysql_fetch_object($result)) {
           $chanlink = preg_replace("/#(.+)/", "\\1", $chan->channel);
           echo "<a href=\"" . $_SERVER['PHP_SELF']. "?channel=$chanlink\">$chan->channel</a> :: ";
-  } 
+  }
 ?>
 		<a href="<?php echo $SERVER['PHP_SELF']; ?>?channel=__all">(All channels)</a> ::
 </center>
@@ -192,7 +192,7 @@ Sorted with most recent first.
           $q = preg_replace('/^\[?[0-9:.]+\]?/', '', $q);
 
           //$q = preg_replace('/^((&lt;|\\[|\\()*.*?)( )(.*?(&gt;|\\]|\\))+:?)/', "\\1&nbsp;\\4", $q);
-          
+
           //hilight nicks
           if (!preg_match("/^\* /", $q)) {
             if (preg_match('/^((&lt;|\\[|\\()*[@%+]?([^\]>\\\)]+?)[@%+]?(&gt;|\\]|\\))+:?)/', $q, $matches)) {
@@ -219,7 +219,7 @@ Sorted with most recent first.
           //$newquote .= preg_replace('/ /', "&nbsp;", $q);
           $newquote .= $q;
           $newquote .= "<br>";
-        }      
+        }
         $quote_text = preg_replace('/ \| /', "<br>", $quote_text);
         echo "<td class=\"quote\">" . $newquote . "</td>";
         echo "</tr>";
@@ -229,7 +229,7 @@ Sorted with most recent first.
         echo $quote->quote . "\n";
       }
     }
-		
+
     if (!$remote) {
       echo "</table>";
       echo "$count results<br>";
@@ -273,7 +273,7 @@ Sorted with most recent first.
     }
 	}
 	else echo "oops: no results<br>" . mysql_error();
-  
+
   if ($remote) {
     exit;
   }
@@ -300,7 +300,7 @@ Sorted with most recent first.
           $q = preg_replace('/^\[?[0-9:.]+\]?/', '', $q);
 
           //$q = preg_replace('/^((&lt;|\\[|\\()*.*?)( )(.*?(&gt;|\\]|\\))+:?)/', "\\1&nbsp;\\4", $q);
-          
+
           //hilight nicks
           if (!preg_match("/^\* /", $q)) {
             $q = preg_replace('/^((&lt;|\\[|\\()*[^\]>\\\)]+?(&gt;|\\]|\\))+:?)/', "<b>\\1</b>", $q);
@@ -310,7 +310,7 @@ Sorted with most recent first.
           }
           $newquote .= $q;
           $newquote .= "<br>";
-        }      
+        }
 				?>
 					<?=$newquote?><br><br>
 					<div class="meta">

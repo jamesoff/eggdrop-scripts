@@ -27,9 +27,9 @@
 ###############################################################################
 
 # space-separated list of RBLs to look in
-set proxycheck_rbls { 
-  "cbl.abuseat.org" 
-  "opm.blitzed.org" 
+set proxycheck_rbls {
+  "cbl.abuseat.org"
+  "opm.blitzed.org"
 }
 
 # time in minutes to ban for

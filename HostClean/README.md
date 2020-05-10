@@ -14,4 +14,3 @@ $( for f in "#channel.*.log"; do python parse.py "$f"; done ) | sort | uniq > ho
 Then load the TCL script into your bot, and run `.hostload <path to file you made above>`, and then do `.hostclean <handle>` for each user.
 
 The script outputs a bunch of `.-host` lines on the partyline, which you should double check, and then you can copy/paste them back into the partyline to execute them.
-

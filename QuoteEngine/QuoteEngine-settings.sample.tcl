@@ -1,6 +1,6 @@
 # Settings file for QuoteEngine
 #
-# Edit this file and save it as QuoteEngine-settings.tcl in 
+# Edit this file and save it as QuoteEngine-settings.tcl in
 # your eggdrop's scripts/ directory
 
 # The mysql hostname to connect to
