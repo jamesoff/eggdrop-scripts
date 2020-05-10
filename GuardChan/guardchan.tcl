@@ -31,26 +31,26 @@ bind join - *!*@* guardchan_join
 setudef flag guardchan
 
 proc guardchan_join { nick host handle channel } {
-  global guardchan_owner guardchan_ban
+    global guardchan_owner guardchan_ban
 
-  if {![channel get $channel guardchan]} {
-    return 0
-  }
-
-  if {$handle == "*"} {
-    if [botisop $channel] {
-			if {!$guardchan_ban} {
-				putkick $channel $nick "You are not permitted to be in here"
-				puthelp "PRIVMSG $guardchan_owner :Kicked $nick from $channel"
-			} else {
-				set ban [maskhost "$nick!$host"]
-				newchanban $channel $ban "guardchan" "Banned for not being in userfile"
-				puthelp "PRIVMSG $guardchan_owner :Banned $nick from $channel"
-			}
-      return 0
-    } else {
-      puthelp "PRIVMSG $guardchan_owner :HELP! $nick has joined $channel and I can't do anything about it :("
-      return 0
+    if {![channel get $channel guardchan]} {
+        return 0
     }
-  }
+
+    if {$handle == "*"} {
+        if [botisop $channel] {
+            if {!$guardchan_ban} {
+                putkick $channel $nick "You are not permitted to be in here"
+                puthelp "PRIVMSG $guardchan_owner :Kicked $nick from $channel"
+            } else {
+                set ban [maskhost "$nick!$host"]
+                newchanban $channel $ban "guardchan" "Banned for not being in userfile"
+                puthelp "PRIVMSG $guardchan_owner :Banned $nick from $channel"
+            }
+            return 0
+        } else {
+            puthelp "PRIVMSG $guardchan_owner :HELP! $nick has joined $channel and I can't do anything about it :("
+            return 0
+        }
+    }
 }

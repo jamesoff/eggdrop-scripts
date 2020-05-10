@@ -35,24 +35,24 @@ setudef flag noiphosts
 
 #it all happens in here
 proc bancheck_join { nick host handle channel } {
-  #check we're active
-	if {![channel get $channel noiphosts]} {
-		return 0
-	}
-
-  putloglev d * "noiphosts: join by $host to $channel"
-
-  #don't apply to friends, voices, ops
-	if {[matchattr $handle +fov|+fov $channel]} {
-    putloglev d * "noiphosts: $nick is a friend"
+#check we're active
+if {![channel get $channel noiphosts]} {
     return 0
+}
+
+putloglev d * "noiphosts: join by $host to $channel"
+
+#don't apply to friends, voices, ops
+if {[matchattr $handle +fov|+fov $channel]} {
+putloglev d * "noiphosts: $nick is a friend"
+return 0
   }
 
   #check host
   if [regexp {@([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3})$} $host matches ip] {
-    putlog "noiphosts: $nick has an un-resolved host ($ip), banning"
-    set banhost "*@$ip"
-    newchanban $channel $banhost "noiphosts" "Non-resolving host" 1440
+      putlog "noiphosts: $nick has an un-resolved host ($ip), banning"
+      set banhost "*@$ip"
+      newchanban $channel $banhost "noiphosts" "Non-resolving host" 1440
   }
 }
 
