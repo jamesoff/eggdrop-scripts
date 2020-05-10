@@ -3,6 +3,9 @@
 # Edit this file and save it as QuoteEngine-settings.tcl in
 # your eggdrop's scripts/ directory
 
+
+#### MYSQL ONLY SETTINGS
+
 # The mysql hostname to connect to
 set quote_db(host) "127.0.0.1"
 
@@ -16,6 +19,19 @@ set quote_db(database) "quotesdb"
 # The URL of the webpage
 # If you're not using it, set this to ""
 set quote_webpage "http://servername/~bot/quotes/"
+
+#### END MYSQL ONLY SETTINGS
+
+
+#### SQLITE ONLY SETTINGS
+
+# The filename to store quotes in
+# Note: relative to the working dir of your bot (probably the eggdrop/
+# directory)
+set quote_db_file "quotes.db"
+
+#### END SQLITE ONLY SETTINGS
+
 
 # automatically spew "relevant" quotes?
 # Done by looking for quotes containing a word someone said in the channel
